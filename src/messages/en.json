@@ -1,0 +1,55 @@
+{
+  "nav": {
+    "restauration": "Dining",
+    "gameRoom": "Game Room",
+    "events": "Events",
+    "contact": "Contact"
+  },
+  "home": {
+    "hero": {
+      "tagline": "Restaurant · Bar · Lounge · Game Room",
+      "description": "A unique experience in Dragage — where gastronomy meets entertainment.",
+      "cta_restauration": "DINING",
+      "cta_game": "GAME ROOM"
+    },
+    "about": {
+      "title": "Welcome to The Canteen's",
+      "description": "Located in Dragage, Yaoundé, The Canteen's is more than a restaurant. It's a complete universe: gourmet flavors, chic lounge atmosphere and gaming entertainment — all under one roof.",
+      "subtitle": "Let's enjoy free time"
+    },
+    "stats": {
+      "tables": "tables",
+      "dishes": "menu dishes",
+      "games": "games available",
+      "open": "open"
+    }
+  },
+  "restauration": {
+    "title": "Our Menu",
+    "subtitle": "A cuisine blending Cameroonian heritage, European flavors and Oriental touches",
+    "order": "Order",
+    "addToCart": "Add to cart",
+    "cart": "My cart",
+    "takeaway": "Takeaway order",
+    "spaces": {
+      "restaurant": "The Restaurant",
+      "lounge": "The Lounge",
+      "terrasse": "The Terrace"
+    },
+    "spacesNav": "Spaces"
+  },
+  "gameRoom": {
+    "title": "The Canteen's Game Room",
+    "subtitle": "Play and Chill — The space where entertainment comes full circle",
+    "packs": "Our Packs",
+    "games": "Our Games",
+    "hours": {
+      "kids": "Kids: 12PM - 6PM",
+      "adults": "Adults: 12PM - Midnight"
+    }
+  },
+  "footer": {
+    "address": "Dragage, next to Club Camtel, Yaoundé",
+    "rights": "All rights reserved"
+  }
+}
