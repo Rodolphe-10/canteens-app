@@ -11,7 +11,7 @@ interface NavLink {
   href: string
   labelFr: string
   labelEn: string
-  children?: { href: string; labelFr: string; labelEn: string; icon?: string }[]
+  children?: { href: string; labelFr: string; labelEn: string }[]
 }
 
 const navLinks: NavLink[] = [
@@ -21,20 +21,10 @@ const navLinks: NavLink[] = [
     labelFr: 'Restauration',
     labelEn: 'Dining',
     children: [
-      { href: '/restauration', labelFr: 'La Carte', labelEn: 'Menu', icon: '🍽️' },
-      {
-        href: '/restauration/restaurant',
-        labelFr: 'Le Restaurant',
-        labelEn: 'Restaurant',
-        icon: '🕯️',
-      },
-      { href: '/restauration/lounge', labelFr: 'Le Lounge', labelEn: 'Lounge', icon: '🍸' },
-      {
-        href: '/restauration/terrasse',
-        labelFr: 'La Terrasse',
-        labelEn: 'Terrace',
-        icon: '🌿',
-      },
+      { href: '/restauration', labelFr: 'La Carte', labelEn: 'Menu' },
+      { href: '/restauration/restaurant', labelFr: 'Le Restaurant', labelEn: 'Restaurant' },
+      { href: '/restauration/lounge', labelFr: 'Le Lounge', labelEn: 'Lounge' },
+      { href: '/restauration/terrasse', labelFr: 'La Terrasse', labelEn: 'Terrace' },
     ],
   },
   { href: '/game-room', labelFr: 'Game Room', labelEn: 'Game Room' },
@@ -46,18 +36,8 @@ const navLinks: NavLink[] = [
     labelFr: 'Contact',
     labelEn: 'Contact',
     children: [
-      {
-        href: '/contact/restaurant',
-        labelFr: 'Restaurant & Lounge',
-        labelEn: 'Restaurant & Lounge',
-        icon: '🍽️',
-      },
-      {
-        href: '/contact/game-room',
-        labelFr: 'Game Room',
-        labelEn: 'Game Room',
-        icon: '🎮',
-      },
+      { href: '/contact/restaurant', labelFr: 'Restaurant & Lounge', labelEn: 'Restaurant & Lounge' },
+      { href: '/contact/game-room', labelFr: 'Game Room', labelEn: 'Game Room' },
     ],
   },
 ]
@@ -120,7 +100,12 @@ export default function Navbar({ locale }: { locale: string }) {
                 src={logoSrc}
                 alt={logoAlt}
                 fill
-                className="object-contain object-left"
+                className={cn(
+                  'object-contain object-left transition-all duration-300',
+                  isGameRoom
+                    ? 'drop-shadow-[0_0_8px_rgba(0,229,255,0.3)]'
+                    : 'brightness-0 invert drop-shadow-[0_0_6px_rgba(212,175,55,0.2)]',
+                )}
                 priority
               />
             </div>
@@ -165,9 +150,6 @@ export default function Navbar({ locale }: { locale: string }) {
                               'flex items-center gap-3 px-4 py-2.5 text-xs uppercase tracking-wider text-tc-cream/60 transition-all hover:bg-white/5 hover:text-tc-gold',
                             )}
                           >
-                            {child.icon ? (
-                              <span className="text-base">{child.icon}</span>
-                            ) : null}
                             {locale === 'fr' ? child.labelFr : child.labelEn}
                           </Link>
                         ))}
@@ -244,7 +226,6 @@ export default function Navbar({ locale }: { locale: string }) {
                         onClick={() => setMenuOpen(false)}
                         className="flex items-center gap-2 px-2 py-2 text-xs text-tc-cream/50 transition-colors hover:text-tc-gold"
                       >
-                        {child.icon}
                         {locale === 'fr' ? child.labelFr : child.labelEn}
                       </Link>
                     ))}
