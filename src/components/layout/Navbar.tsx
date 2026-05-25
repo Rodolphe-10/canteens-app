@@ -101,8 +101,8 @@ export default function Navbar({ locale }: { locale: string }) {
 
   const isGameRoom = pathname.includes('/game-room')
   const logoSrc = isGameRoom
-    ? '/images/logos/logo_gameroom1.jpg'
-    : '/images/logos/logo_restaurant1.jpg'
+    ? '/images/logos/logo_gameroom1-removebg-preview.png'
+    : '/images/logos/logo_restaurant1-removebg-preview.png'
   const logoAlt = isGameRoom ? "The Canteen's Game Room" : "The Canteen's"
 
   return (

@@ -14,7 +14,7 @@ export default async function RestaurationPage({
       <div className="border-b border-white/5 bg-tc-dark px-4 pb-8 pt-16 text-center md:pt-20">
         <div className="relative mx-auto mb-6 h-14 w-48">
           <Image
-            src="/images/logos/logo_restaurant1.jpg"
+            src="/images/logos/logo_restaurant1-removebg-preview.png"
             alt="The Canteen's"
             fill
             sizes="(max-width: 768px) 192px, 192px"
