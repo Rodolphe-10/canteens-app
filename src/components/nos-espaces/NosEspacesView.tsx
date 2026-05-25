@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { useRef, useState } from 'react'
 import { ArrowRight } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import BackButton from '@/components/ui/BackButton'
 
 const spaces = [
   {
@@ -222,11 +223,14 @@ export default function NosEspacesView({ locale }: { locale: string }) {
   return (
     <div className="min-h-screen bg-tc-black pt-20">
       <section className="border-b border-white/5 px-4 py-20 text-center">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="mx-auto max-w-3xl"
-        >
+        <div className="mx-auto max-w-3xl">
+          <div className="mb-8 text-left">
+            <BackButton locale={locale} fallbackHref="/" />
+          </div>
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+          >
           <span className="mb-8 inline-block rounded-full border border-tc-gold/20 px-4 py-1.5 text-xs uppercase tracking-[0.4em] text-tc-gold/60">
             {isEn ? 'The venue' : 'Le lieu'}
           </span>
@@ -238,7 +242,8 @@ export default function NosEspacesView({ locale }: { locale: string }) {
               ? 'Four distinct universes under one roof — each with its own identity, atmosphere and experience.'
               : 'Quatre univers distincts sous un même toit — chacun avec sa propre identité, son ambiance et son expérience.'}
           </p>
-        </motion.div>
+          </motion.div>
+        </div>
       </section>
 
       {spaces.map((space, i) => (

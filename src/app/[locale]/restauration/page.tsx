@@ -17,6 +17,7 @@ export default async function RestaurationPage({
             src="/images/logos/logo_restaurant1.jpg"
             alt="The Canteen's"
             fill
+            sizes="(max-width: 768px) 192px, 192px"
             className="object-contain"
             priority
           />

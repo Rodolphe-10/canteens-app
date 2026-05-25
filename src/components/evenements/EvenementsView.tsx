@@ -6,6 +6,8 @@ import Link from 'next/link'
 import { useRef, useState } from 'react'
 import { Calendar, ArrowRight } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import FlyerModal from '@/components/ui/FlyerModal'
+import BackButton from '@/components/ui/BackButton'
 
 const events = [
   {
@@ -171,87 +173,148 @@ function EventCard({
   const ref = useRef(null)
   const isInView = useInView(ref, { once: true, margin: '-60px' })
   const [imgError, setImgError] = useState(false)
+  const [flyerOpen, setFlyerOpen] = useState(false)
 
   return (
-    <motion.div
-      ref={ref}
-      initial={{ opacity: 0, y: 30 }}
-      animate={isInView ? { opacity: 1, y: 0 } : {}}
-      transition={{ delay: (index % 3) * 0.1 }}
-      className={cn(
-        'group glass flex flex-col overflow-hidden border transition-all duration-300 hover:shadow-lg',
-        event.border,
-      )}
-    >
-      <div className="relative h-52 overflow-hidden">
-        <div className={cn('absolute inset-0 bg-gradient-to-br', event.fallback)} />
-        {!imgError && (
-          <Image
-            src={event.flyer}
-            alt={isEn ? event.nameEn : event.nameFr}
-            fill
-            className="object-cover transition-transform duration-500 group-hover:scale-105"
-            sizes="(max-width: 768px) 100vw, 33vw"
-            onError={() => setImgError(true)}
-          />
+    <>
+      <motion.div
+        ref={ref}
+        initial={{ opacity: 0, y: 30 }}
+        animate={isInView ? { opacity: 1, y: 0 } : {}}
+        transition={{ delay: (index % 3) * 0.1 }}
+        className={cn(
+          'group glass flex flex-col overflow-hidden border transition-all duration-300 hover:shadow-lg',
+          event.border,
         )}
-        <div className="absolute left-3 top-3">
-          <span className={cn('px-3 py-1 text-xs font-black tracking-widest', event.badgeColor)}>
-            {event.badge}
-          </span>
+      >
+        <div className="relative h-52 overflow-hidden">
+          <div className={cn('absolute inset-0 bg-gradient-to-br', event.fallback)} />
+          {!imgError && (
+            <Image
+              src={event.flyer}
+              alt={isEn ? event.nameEn : event.nameFr}
+              fill
+              className="object-cover transition-transform duration-500 group-hover:scale-105"
+              sizes="(max-width: 768px) 100vw, 33vw"
+              onError={() => setImgError(true)}
+            />
+          )}
+          <div className="absolute left-3 top-3">
+            <span className={cn('px-3 py-1 text-xs font-black tracking-widest', event.badgeColor)}>
+              {event.badge}
+            </span>
+          </div>
+          <div className="absolute right-3 top-3">
+            <span
+              className={cn(
+                'rounded bg-black/60 px-2 py-1 text-[10px] uppercase tracking-widest',
+                categoryColors[event.category] || 'text-white',
+              )}
+            >
+              {isEn ? event.categoryLabelEn : event.categoryLabelFr}
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setFlyerOpen(true)}
+            className="absolute inset-0 flex items-center justify-center bg-black/0 opacity-0 transition-all duration-300 group-hover:bg-black/40 group-hover:opacity-100"
+          >
+            <span className="flex items-center gap-2 rounded border border-white/40 bg-black/60 px-4 py-2 text-xs uppercase tracking-widest text-white backdrop-blur-sm">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="12"
+                height="12"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <rect width="18" height="18" x="3" y="3" rx="2" ry="2" />
+                <circle cx="9" cy="9" r="2" />
+                <path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21" />
+              </svg>
+              {isEn ? 'View flyer' : 'Voir le flyer'}
+            </span>
+          </button>
         </div>
-        <div className="absolute right-3 top-3">
-          <span
+
+        <div className="flex flex-1 flex-col gap-3 p-5">
+          <div>
+            <p className={cn('mb-1 text-xs uppercase tracking-widest', event.accent)}>
+              {isEn ? event.taglineEn : event.taglineFr}
+            </p>
+            <h3 className="font-serif text-xl leading-snug text-tc-cream">
+              {isEn ? event.nameEn : event.nameFr}
+            </h3>
+          </div>
+
+          <p className="flex-1 text-sm leading-relaxed text-tc-cream/50">
+            {isEn ? event.descEn : event.descFr}
+          </p>
+
+          <div
             className={cn(
-              'rounded bg-black/60 px-2 py-1 text-[10px] uppercase tracking-widest',
-              categoryColors[event.category] || 'text-white',
+              'flex items-center gap-2 border-t pt-3 text-xs',
+              event.border,
+              event.accent,
             )}
           >
-            {isEn ? event.categoryLabelEn : event.categoryLabelFr}
-          </span>
+            <Calendar size={12} />
+            <span>{isEn ? event.scheduleEn : event.schedule}</span>
+          </div>
+
+          <div className="flex items-center justify-between">
+            <Link
+              href={`/${locale}${event.href}`}
+              className={cn(
+                'group/link inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider transition-all hover:underline',
+                event.accent,
+              )}
+            >
+              {isEn ? 'Learn more' : 'En savoir plus'}
+              <ArrowRight
+                size={12}
+                className="transition-transform group-hover/link:translate-x-1"
+              />
+            </Link>
+            <button
+              type="button"
+              onClick={() => setFlyerOpen(true)}
+              className={cn(
+                'inline-flex items-center gap-1 text-[10px] uppercase tracking-wider opacity-50 transition-opacity hover:opacity-100',
+                event.accent,
+              )}
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="10"
+                height="10"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <rect width="18" height="18" x="3" y="3" rx="2" ry="2" />
+                <circle cx="9" cy="9" r="2" />
+                <path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21" />
+              </svg>
+              Flyer
+            </button>
+          </div>
         </div>
-      </div>
+      </motion.div>
 
-      <div className="flex flex-1 flex-col gap-3 p-5">
-        <div>
-          <p className={cn('mb-1 text-xs uppercase tracking-widest', event.accent)}>
-            {isEn ? event.taglineEn : event.taglineFr}
-          </p>
-          <h3 className="font-serif text-xl leading-snug text-tc-cream">
-            {isEn ? event.nameEn : event.nameFr}
-          </h3>
-        </div>
-
-        <p className="flex-1 text-sm leading-relaxed text-tc-cream/50">
-          {isEn ? event.descEn : event.descFr}
-        </p>
-
-        <div
-          className={cn(
-            'flex items-center gap-2 border-t pt-3 text-xs',
-            event.border,
-            event.accent,
-          )}
-        >
-          <Calendar size={12} />
-          <span>{isEn ? event.scheduleEn : event.schedule}</span>
-        </div>
-
-        <Link
-          href={`/${locale}${event.href}`}
-          className={cn(
-            'group/link inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider transition-all hover:underline',
-            event.accent,
-          )}
-        >
-          {isEn ? 'Learn more' : 'En savoir plus'}
-          <ArrowRight
-            size={12}
-            className="transition-transform group-hover/link:translate-x-1"
-          />
-        </Link>
-      </div>
-    </motion.div>
+      <FlyerModal
+        src={event.flyer}
+        alt={isEn ? event.nameEn : event.nameFr}
+        open={flyerOpen}
+        onClose={() => setFlyerOpen(false)}
+      />
+    </>
   )
 }
 
@@ -261,11 +324,14 @@ export default function EvenementsView({ locale }: { locale: string }) {
   return (
     <div className="min-h-screen bg-tc-black pt-20">
       <section className="border-b border-white/5 px-4 py-20 text-center">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="mx-auto max-w-3xl"
-        >
+        <div className="mx-auto max-w-3xl">
+          <div className="mb-8 text-left">
+            <BackButton locale={locale} fallbackHref="/" />
+          </div>
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+          >
           <span className="mb-8 inline-block rounded-full border border-tc-gold/20 px-4 py-1.5 text-xs uppercase tracking-[0.4em] text-tc-gold/60">
             {isEn ? "What's on" : 'Agenda'}
           </span>
@@ -277,7 +343,8 @@ export default function EvenementsView({ locale }: { locale: string }) {
               ? "Brunchs, game nights, DJ sets, private events — there's always something happening at The Canteen's."
               : "Brunchs, game nights, soirées DJ, événements privés — il se passe toujours quelque chose chez The Canteen's."}
           </p>
-        </motion.div>
+          </motion.div>
+        </div>
       </section>
 
       <section className="px-4 py-16">

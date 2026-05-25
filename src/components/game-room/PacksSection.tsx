@@ -1,9 +1,10 @@
 'use client'
 
 import { motion, useInView } from 'framer-motion'
-import { useRef } from 'react'
-import { Calendar, Clock, Zap } from 'lucide-react'
+import { useRef, useState } from 'react'
+import { Calendar, Clock, Zap, Image as ImageIcon } from 'lucide-react'
 import { formatPrice } from '@/lib/utils'
+import FlyerModal from '@/components/ui/FlyerModal'
 
 const gameRoomPacks = [
   {
@@ -21,60 +22,21 @@ const gameRoomPacks = [
     price: null as number | null,
     priceLabelFr: 'Tarifs réduits toute la soirée',
     priceLabelEn: 'Reduced prices all evening',
+    flyer: '/images/flyers/pack_afterwork.jpg',
+    flyerAlt: 'Friday After Work Game Night',
     items: [
-      {
-        nameFr: 'Billard',
-        nameEn: 'Billiards',
-        price: 1000,
-        unitFr: 'la partie',
-        unitEn: 'per game',
-      },
-      {
-        nameFr: 'Fléchettes',
-        nameEn: 'Darts',
-        price: 1000,
-        unitFr: 'la partie',
-        unitEn: 'per game',
-      },
-      {
-        nameFr: 'Boxer',
-        nameEn: 'Boxer',
-        price: 500,
-        unitFr: '3 coups',
-        unitEn: '3 hits',
-      },
-      {
-        nameFr: 'Simulateur',
-        nameEn: 'Simulator',
-        price: 2000,
-        unitFr: 'la session',
-        unitEn: 'per session',
-      },
-      {
-        nameFr: 'VR',
-        nameEn: 'VR',
-        price: 2000,
-        unitFr: 'la session',
-        unitEn: 'per session',
-      },
-      {
-        nameFr: 'Baby-foot',
-        nameEn: 'Foosball',
-        price: 500,
-        unitFr: 'la partie',
-        unitEn: 'per game',
-      },
-      {
-        nameFr: 'Flipper',
-        nameEn: 'Pinball',
-        price: 1000,
-        unitFr: '1 jeton',
-        unitEn: '1 token',
-      },
+      { nameFr: 'Billard', nameEn: 'Billiards', price: 1000, unitFr: 'la partie', unitEn: 'per game' },
+      { nameFr: 'Fléchettes', nameEn: 'Darts', price: 1000, unitFr: 'la partie', unitEn: 'per game' },
+      { nameFr: 'Boxer', nameEn: 'Boxer', price: 500, unitFr: '3 coups', unitEn: '3 hits' },
+      { nameFr: 'Simulateur', nameEn: 'Simulator', price: 2000, unitFr: 'la session', unitEn: 'per session' },
+      { nameFr: 'VR', nameEn: 'VR', price: 2000, unitFr: 'la session', unitEn: 'per session' },
+      { nameFr: 'Baby-foot', nameEn: 'Foosball', price: 500, unitFr: 'la partie', unitEn: 'per game' },
+      { nameFr: 'Flipper', nameEn: 'Pinball', price: 1000, unitFr: '1 jeton', unitEn: '1 token' },
     ],
     glow: 'rgba(255,140,0,0.15)',
     border: 'border-tc-game-orange/30',
     accent: 'text-tc-game-orange',
+    btnBorder: 'border-tc-game-orange/40 text-tc-game-orange hover:bg-tc-game-orange/10',
     icon: '🍺',
   },
   {
@@ -92,32 +54,17 @@ const gameRoomPacks = [
     price: 5000,
     priceLabelFr: "par personne · 1 heure d'accès",
     priceLabelEn: 'per person · 1 hour access',
+    flyer: '/images/flyers/pack_diamnche.jpg',
+    flyerAlt: 'Dimanche Brunch Game Room',
     items: [
-      {
-        nameFr: 'Réalité Virtuelle',
-        nameEn: 'Virtual Reality',
-        price: null as number | null,
-        unitFr: 'inclus',
-        unitEn: 'included',
-      },
-      {
-        nameFr: 'Billard',
-        nameEn: 'Billiards',
-        price: null,
-        unitFr: 'inclus',
-        unitEn: 'included',
-      },
-      {
-        nameFr: 'Baby-foot',
-        nameEn: 'Foosball',
-        price: null,
-        unitFr: 'inclus',
-        unitEn: 'included',
-      },
+      { nameFr: 'Réalité Virtuelle', nameEn: 'Virtual Reality', price: null as number | null, unitFr: 'inclus', unitEn: 'included' },
+      { nameFr: 'Billard', nameEn: 'Billiards', price: null, unitFr: 'inclus', unitEn: 'included' },
+      { nameFr: 'Baby-foot', nameEn: 'Foosball', price: null, unitFr: 'inclus', unitEn: 'included' },
     ],
     glow: 'rgba(232,35,42,0.15)',
     border: 'border-tc-game-red/30',
     accent: 'text-tc-game-red',
+    btnBorder: 'border-tc-game-red/40 text-tc-game-red hover:bg-tc-game-red/10',
     icon: '🎮',
   },
 ]
@@ -125,6 +72,7 @@ const gameRoomPacks = [
 export default function PacksSection({ locale }: { locale: string }) {
   const ref = useRef(null)
   const isInView = useInView(ref, { once: true, margin: '-80px' })
+  const [flyerOpen, setFlyerOpen] = useState<{ src: string; alt: string } | null>(null)
 
   return (
     <section ref={ref} className="bg-tc-dark px-4 py-20">
@@ -149,9 +97,7 @@ export default function PacksSection({ locale }: { locale: string }) {
               initial={{ opacity: 0, y: 30 }}
               animate={isInView ? { opacity: 1, y: 0 } : {}}
               transition={{ delay: i * 0.15 }}
-              style={{
-                boxShadow: isInView ? `0 0 60px ${pack.glow}` : 'none',
-              }}
+              style={{ boxShadow: isInView ? `0 0 60px ${pack.glow}` : 'none' }}
               className={`glass relative overflow-hidden border p-8 ${pack.border}`}
             >
               <div
@@ -161,16 +107,23 @@ export default function PacksSection({ locale }: { locale: string }) {
                 }}
               />
 
-              <span
-                className={`mb-6 inline-block px-3 py-1 text-xs font-black tracking-[0.3em] ${pack.badgeColor}`}
-              >
-                {pack.badge}
-              </span>
+              <div className="mb-6 flex items-center justify-between">
+                <span className={`inline-block px-3 py-1 text-xs font-black tracking-[0.3em] ${pack.badgeColor}`}>
+                  {pack.badge}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setFlyerOpen({ src: pack.flyer, alt: pack.flyerAlt })}
+                  className={`inline-flex items-center gap-1.5 border px-3 py-1.5 text-xs uppercase tracking-wider transition-all ${pack.btnBorder}`}
+                >
+                  <ImageIcon size={11} />
+                  {locale === 'fr' ? 'Voir le flyer' : 'View flyer'}
+                </button>
+              </div>
 
               <div className="mb-2">
                 <p className={`mb-1 text-xs uppercase tracking-[0.3em] ${pack.accent}`}>
-                  {pack.icon}{' '}
-                  {locale === 'fr' ? pack.subtitleFr : pack.subtitleEn}
+                  {pack.icon} {locale === 'fr' ? pack.subtitleFr : pack.subtitleEn}
                 </p>
                 <h3 className="font-display text-4xl leading-none tracking-wide text-white sm:text-5xl">
                   {locale === 'fr' ? pack.nameFr : pack.nameEn}
@@ -181,14 +134,10 @@ export default function PacksSection({ locale }: { locale: string }) {
                 {locale === 'fr' ? pack.taglineFr : pack.taglineEn}
               </p>
 
-              <div
-                className={`mb-6 flex items-baseline gap-2 border-b pb-6 ${pack.border}`}
-              >
+              <div className={`mb-6 flex items-baseline gap-2 border-b pb-6 ${pack.border}`}>
                 {pack.price ? (
                   <>
-                    <span className={`font-display text-5xl ${pack.accent}`}>
-                      {formatPrice(pack.price)}
-                    </span>
+                    <span className={`font-display text-5xl ${pack.accent}`}>{formatPrice(pack.price)}</span>
                     <span className="text-xs text-tc-cream/40">
                       {locale === 'fr' ? pack.priceLabelFr : pack.priceLabelEn}
                     </span>
@@ -207,9 +156,7 @@ export default function PacksSection({ locale }: { locale: string }) {
                     <span className="text-xs text-tc-cream/70">
                       {locale === 'fr' ? item.nameFr : item.nameEn}
                       {item.price != null && (
-                        <span className={`ml-1 font-bold ${pack.accent}`}>
-                          {formatPrice(item.price)}
-                        </span>
+                        <span className={`ml-1 font-bold ${pack.accent}`}>{formatPrice(item.price)}</span>
                       )}
                       {item.price == null && (
                         <span className={`ml-1 text-[10px] uppercase ${pack.accent}`}>
@@ -263,6 +210,13 @@ export default function PacksSection({ locale }: { locale: string }) {
           </div>
         </motion.div>
       </div>
+
+      <FlyerModal
+        src={flyerOpen?.src ?? ''}
+        alt={flyerOpen?.alt ?? ''}
+        open={flyerOpen !== null}
+        onClose={() => setFlyerOpen(null)}
+      />
     </section>
   )
 }

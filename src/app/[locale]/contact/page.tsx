@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import BackButton from '@/components/ui/BackButton'
 
 export default async function ContactPage({
   params,
@@ -9,6 +10,9 @@ export default async function ContactPage({
   const isEn = locale === 'en'
   return (
     <div className="flex min-h-screen flex-col items-center justify-center gap-6 bg-tc-black px-4 pt-20">
+      <div className="mb-8 w-full max-w-lg self-start">
+        <BackButton locale={locale} fallbackHref="/" />
+      </div>
       <h1 className="text-center font-serif text-4xl text-tc-cream">Contact</h1>
       <p className="text-center text-sm text-tc-cream/40">
         {isEn ? 'Choose your universe' : 'Choisissez votre univers'}
