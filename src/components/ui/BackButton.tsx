@@ -55,17 +55,17 @@ export function PageBackNav({
   return (
     <div
       className={cn(
-        'fixed inset-x-0 top-20 z-40 border-b border-white/5 bg-tc-black/90 px-4 py-2.5 backdrop-blur-sm sm:px-6 lg:px-8',
+        'fixed inset-x-0 top-20 z-40 px-4 py-3 sm:px-6 lg:px-8',
         className,
       )}
     >
-      <div className="mx-auto flex max-w-7xl items-center">
+      <div className="mx-auto max-w-7xl">
         <BackButton
           locale={locale}
           fallbackHref={fallbackHref}
           labelFr={labelFr}
           labelEn={labelEn}
-          className="text-tc-cream/80 hover:text-tc-cream"
+          className="gap-2 rounded border border-white/10 bg-tc-black/70 px-4 py-2 text-tc-cream/70 backdrop-blur-md hover:border-white/30 hover:bg-tc-black/90 hover:text-tc-cream"
         />
       </div>
     </div>

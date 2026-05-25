@@ -1,9 +1,9 @@
 'use client'
 
 import { motion } from 'framer-motion'
-import { Phone, Mail, MapPin, Clock, ArrowLeft } from 'lucide-react'
-import Link from 'next/link'
+import { Phone, Mail, MapPin, Clock } from 'lucide-react'
 import { useParams } from 'next/navigation'
+import { PageBackNav } from '@/components/ui/BackButton'
 
 const WhatsAppIcon = () => (
   <svg viewBox="0 0 24 24" fill="currentColor" className="h-5 w-5">
@@ -25,21 +25,14 @@ const FacebookIcon = () => (
 
 export default function ContactRestaurantPage() {
   const params = useParams()
-  const locale = typeof params.locale === 'string' ? params.locale : 'fr'
+  const locale = (params?.locale as string) || 'fr'
   const isEn = locale === 'en'
 
   return (
-    <div className="min-h-screen bg-tc-black pt-20">
+    <div className="min-h-screen bg-tc-black pt-32">
+      <PageBackNav locale={locale} fallbackHref="/contact" />
       <section className="px-4 py-16">
         <div className="mx-auto max-w-2xl">
-          <Link
-            href={`/${locale}/contact`}
-            className="mb-10 inline-flex items-center gap-2 text-xs uppercase tracking-widest text-tc-cream/40 transition-colors hover:text-tc-cream"
-          >
-            <ArrowLeft size={12} />
-            {isEn ? 'All contacts' : 'Tous les contacts'}
-          </Link>
-
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
             <span className="mb-4 block text-3xl">🍽️</span>
             <span className="mb-3 block text-xs uppercase tracking-[0.4em] text-tc-gold">
