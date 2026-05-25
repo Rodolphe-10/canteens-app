@@ -3,16 +3,14 @@
 import { motion } from 'framer-motion'
 import Image from 'next/image'
 import { useState } from 'react'
-import BackButton from '@/components/ui/BackButton'
+import { PageBackNav } from '@/components/ui/BackButton'
 
 export default function GameRoomHero({ locale }: { locale: string }) {
   const [bgError, setBgError] = useState(false)
 
   return (
     <section className="relative flex min-h-[70vh] items-end overflow-hidden pt-16 md:pt-20">
-      <div className="absolute left-4 top-24 z-10 sm:left-8">
-        <BackButton locale={locale} fallbackHref="/" />
-      </div>
+      <PageBackNav locale={locale} fallbackHref="/" />
       <div className="absolute inset-0 bg-gradient-to-br from-purple-950 via-tc-black to-tc-black" />
       {!bgError && (
         <Image

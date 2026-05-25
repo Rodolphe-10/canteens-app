@@ -2,7 +2,7 @@
 
 import { motion } from 'framer-motion'
 import { Phone, Clock, Users, MapPin, Info } from 'lucide-react'
-import BackButton from '@/components/ui/BackButton'
+import { PageBackNav } from '@/components/ui/BackButton'
 
 const WhatsAppIcon = () => (
   <svg viewBox="0 0 24 24" fill="currentColor" className="h-5 w-5">
@@ -155,12 +155,10 @@ export default function ReservationView({ locale }: { locale: string }) {
   const content = getContent(locale)
 
   return (
-    <div className="min-h-screen bg-tc-black pt-20">
-      <section className="border-b border-white/5 px-4 py-20 text-center">
+    <div className="min-h-screen bg-tc-black pt-32">
+      <PageBackNav locale={locale} fallbackHref="/" />
+      <section className="border-b border-white/5 px-4 py-16 text-center sm:py-20">
         <div className="mx-auto max-w-3xl">
-          <div className="mb-8 text-left">
-            <BackButton locale={locale} fallbackHref="/" />
-          </div>
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
             <span className="mb-8 inline-block rounded-full border border-tc-gold/20 px-4 py-1.5 text-xs uppercase tracking-[0.4em] text-tc-gold/60">
               {content.badge}

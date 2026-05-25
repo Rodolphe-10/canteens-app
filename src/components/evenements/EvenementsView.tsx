@@ -7,7 +7,7 @@ import { useRef, useState } from 'react'
 import { Calendar, ArrowRight } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import FlyerModal from '@/components/ui/FlyerModal'
-import BackButton from '@/components/ui/BackButton'
+import { PageBackNav } from '@/components/ui/BackButton'
 
 const events = [
   {
@@ -322,12 +322,10 @@ export default function EvenementsView({ locale }: { locale: string }) {
   const isEn = locale === 'en'
 
   return (
-    <div className="min-h-screen bg-tc-black pt-20">
-      <section className="border-b border-white/5 px-4 py-20 text-center">
+    <div className="min-h-screen bg-tc-black pt-32">
+      <PageBackNav locale={locale} fallbackHref="/" />
+      <section className="border-b border-white/5 px-4 py-16 text-center sm:py-20">
         <div className="mx-auto max-w-3xl">
-          <div className="mb-8 text-left">
-            <BackButton locale={locale} fallbackHref="/" />
-          </div>
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
