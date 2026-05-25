@@ -115,7 +115,7 @@ export default function Navbar({ locale }: { locale: string }) {
       <div className="mx-auto max-w-7xl px-4 sm:px-6">
         <div className="flex h-20 items-center justify-between">
           <Link href={`/${locale}`} className="flex shrink-0 items-center">
-            <div className="relative h-12 w-40">
+            <div className="relative h-17 w-60">
               <Image
                 src={logoSrc}
                 alt={logoAlt}
