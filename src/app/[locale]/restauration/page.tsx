@@ -1,6 +1,7 @@
 import Image from 'next/image'
 import MenuSection from '@/components/restauration/MenuSection'
 import SpacesNav from '@/components/restauration/SpacesNav'
+import { PageBackNav } from '@/components/ui/BackButton'
 
 export default async function RestaurationPage({
   params,
@@ -11,6 +12,7 @@ export default async function RestaurationPage({
 
   return (
     <>
+      <PageBackNav locale={locale} fallbackHref="/" />
       <div className="border-b border-white/5 bg-tc-dark px-4 pb-8 pt-16 text-center md:pt-20">
         <div className="relative mx-auto mb-6 h-14 w-48">
           <Image
