@@ -3,6 +3,7 @@
 import { motion } from 'framer-motion'
 import { Phone, Clock, Users, MapPin, Info } from 'lucide-react'
 import { PageBackNav } from '@/components/ui/BackButton'
+import ReservationForm from '@/components/reservation/ReservationForm'
 
 const WhatsAppIcon = () => (
   <svg viewBox="0 0 24 24" fill="currentColor" className="h-5 w-5">
@@ -178,79 +179,92 @@ export default function ReservationView({ locale }: { locale: string }) {
       </section>
 
       <section className="px-4 py-16">
-        <div className="mx-auto grid max-w-5xl grid-cols-1 gap-8 lg:grid-cols-2">
-          {content.sections.map((section, i) => (
+        <div className="mx-auto max-w-7xl">
+
+          {/* Formulaire Restaurant / Lounge / Terrasse */}
+          <div className="mb-20">
             <motion.div
-              key={section.id}
-              initial={{ opacity: 0, y: 30 }}
+              initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: i * 0.15 }}
-              style={{ boxShadow: `0 0 50px ${section.glow}` }}
-              className={`glass flex flex-col gap-6 border p-8 ${section.color}`}
+              className="mb-10 text-center"
             >
-              <div>
-                <span className="mb-4 block text-3xl">{section.icon}</span>
-                <h2 className="mb-3 font-serif text-3xl text-tc-cream">
-                  {section.label}
-                </h2>
-                <p className="text-sm leading-relaxed text-tc-cream/50">
-                  {section.description}
-                </p>
-              </div>
-
-              <div className={`flex flex-col gap-2 border-y py-4 ${section.color}`}>
-                {section.infos.map((text, j) => {
-                  const Icon = infoIcons[j] ?? MapPin
-                  return (
-                    <div
-                      key={j}
-                      className={`flex items-center gap-2 text-xs ${section.accent}`}
-                    >
-                      <Icon size={14} />
-                      <span className="text-tc-cream/60">{text}</span>
-                    </div>
-                  )
-                })}
-              </div>
-
-              <div className="flex flex-col gap-3">
-                <p
-                  className={`mb-1 text-xs uppercase tracking-widest ${section.accent}`}
-                >
-                  {content.howTitle}
-                </p>
-                {section.steps.map((step, j) => (
-                  <div key={j} className="flex items-start gap-3">
-                    <span
-                      className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border text-xs font-bold ${section.color} ${section.accent}`}
-                    >
-                      {j + 1}
-                    </span>
-                    <p className="text-sm text-tc-cream/60">{step}</p>
-                  </div>
-                ))}
-              </div>
-
-              <div className="mt-auto flex flex-col gap-3">
-                <a
-                  href={`https://wa.me/${section.whatsapp.number}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center justify-center gap-2 bg-green-600 px-6 py-3.5 text-sm font-bold uppercase tracking-wider text-white transition-colors hover:bg-green-500"
-                >
-                  <WhatsAppIcon />
-                  {section.whatsapp.label}
-                </a>
-                <a
-                  href={`tel:${section.phone.number.replace(/\s/g, '')}`}
-                  className={`flex items-center justify-center gap-2 border py-3 px-6 text-sm tracking-wider transition-all hover:bg-white/5 ${section.color} ${section.accent}`}
-                >
-                  <Phone size={14} />
-                  {section.phone.number}
-                </a>
-              </div>
+              <span className="mb-4 block text-xs uppercase tracking-[0.3em] text-tc-gold/50">
+                {locale === 'fr' ? 'Restaurant · Lounge · Terrasse' : 'Restaurant · Lounge · Terrace'}
+              </span>
+              <h2 className="font-serif text-3xl text-tc-cream sm:text-4xl">
+                {locale === 'fr' ? 'Formulaire de réservation' : 'Reservation form'}
+              </h2>
             </motion.div>
-          ))}
+            <ReservationForm locale={locale} />
+          </div>
+
+          {/* Séparateur Game Room */}
+          <div className="mb-12 flex items-center gap-6">
+            <div className="h-px flex-1 bg-white/5" />
+            <span className="text-xs uppercase tracking-[0.3em] text-tc-game-cyan/50">Game Room</span>
+            <div className="h-px flex-1 bg-white/5" />
+          </div>
+
+          {/* Carte Game Room — conserve l'existant */}
+          <div className="mx-auto max-w-lg">
+            {/* Ici on garde uniquement la carte Game Room du grid existant */}
+            {content.sections.filter(s => s.id === 'gameroom').map((section) => (
+              <motion.div
+                key={section.id}
+                initial={{ opacity: 0, y: 30 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.2 }}
+                style={{ boxShadow: `0 0 50px ${section.glow}` }}
+                className={`glass flex flex-col gap-6 border p-8 ${section.color}`}
+              >
+                <div>
+                  <h2 className="mb-3 font-serif text-3xl text-tc-cream">{section.label}</h2>
+                  <p className="text-sm leading-relaxed text-tc-cream/50">{section.description}</p>
+                </div>
+                <div className={`flex flex-col gap-2 border-y py-4 ${section.color}`}>
+                  {section.infos.map((text, j) => {
+                    const Icon = infoIcons[j] ?? MapPin
+                    return (
+                      <div key={j} className={`flex items-center gap-2 text-xs ${section.accent}`}>
+                        <Icon size={14} />
+                        <span className="text-tc-cream/60">{text}</span>
+                      </div>
+                    )
+                  })}
+                </div>
+                <div className="flex flex-col gap-3">
+                  <p className={`mb-1 text-xs uppercase tracking-widest ${section.accent}`}>{content.howTitle}</p>
+                  {section.steps.map((step, j) => (
+                    <div key={j} className="flex items-start gap-3">
+                      <span className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border text-xs font-bold ${section.color} ${section.accent}`}>
+                        {j + 1}
+                      </span>
+                      <p className="text-sm text-tc-cream/60">{step}</p>
+                    </div>
+                  ))}
+                </div>
+                <div className="mt-auto flex flex-col gap-3">
+                  <a
+                    href={`https://wa.me/${section.whatsapp.number}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center justify-center gap-2 bg-green-600 px-6 py-3.5 text-sm font-bold uppercase tracking-wider text-white transition-colors hover:bg-green-500"
+                  >
+                    <WhatsAppIcon />
+                    {section.whatsapp.label}
+                  </a>
+                  <a
+                    href={`tel:${section.phone.number.replace(/\s/g, '')}`}
+                    className={`flex items-center justify-center gap-2 border px-6 py-3 text-sm tracking-wider transition-all hover:bg-white/5 ${section.color} ${section.accent}`}
+                  >
+                    <Phone size={14} />
+                    {section.phone.number}
+                  </a>
+                </div>
+              </motion.div>
+            ))}
+          </div>
+
         </div>
       </section>
 
