@@ -65,8 +65,8 @@ function getContent(locale: string): {
             "Précisez le nombre de personnes et l'occasion",
             'Nous confirmons votre créneau sous 30 minutes',
           ],
-          whatsapp: { number: '237699999886', label: 'WhatsApp Restaurant' },
-          phone: { number: '+237 699 999 886', label: 'Appeler le restaurant' },
+          whatsapp: { number: '237655867084', label: 'WhatsApp Restaurant' },
+          phone: { number: '+237 655 867 084', label: 'Appeler le restaurant' },
         },
         {
           id: 'gameroom',
@@ -121,8 +121,8 @@ function getContent(locale: string): {
           'Specify the number of guests and occasion',
           'We confirm your slot within 30 minutes',
         ],
-        whatsapp: { number: '237699999886', label: 'WhatsApp Restaurant' },
-        phone: { number: '+237 699 999 886', label: 'Call the restaurant' },
+        whatsapp: { number: '237655867084', label: 'WhatsApp Restaurant' },
+        phone: { number: '+237 655 867 084', label: 'Call the restaurant' },
       },
       {
         id: 'gameroom',
@@ -152,7 +152,13 @@ function getContent(locale: string): {
 
 const infoIcons = [Users, Clock, MapPin] as const
 
-export default function ReservationView({ locale }: { locale: string }) {
+export default function ReservationView({
+  locale,
+  defaultEspace,
+}: {
+  locale: string
+  defaultEspace?: string
+}) {
   const content = getContent(locale)
 
   return (
@@ -195,7 +201,7 @@ export default function ReservationView({ locale }: { locale: string }) {
                 {locale === 'fr' ? 'Formulaire de réservation' : 'Reservation form'}
               </h2>
             </motion.div>
-            <ReservationForm locale={locale} />
+            <ReservationForm locale={locale} defaultEspace={defaultEspace} />
           </div>
 
           {/* Séparateur Game Room */}

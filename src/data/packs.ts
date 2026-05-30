@@ -57,7 +57,7 @@ export const packs: Pack[] = [
     description:
       'Un voyage gourmand entre terroir et raffinement. Karaoké, live music, ambiance lounge.',
     price: 10000,
-    priceLabel: 'Bufet à volonté — 10 000 FCFA',
+    priceLabel: 'Buffet à volonté — 10 000 FCFA',
     schedule: 'Tous les dimanches à partir de 12H',
     color: 'restaurant',
     badge: 'DIMANCHE',

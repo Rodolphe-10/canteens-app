@@ -63,10 +63,10 @@ const events = [
     categoryLabelEn: 'Restaurant & Lounge',
     nameFr: 'Brunch du Dimanche',
     nameEn: 'Sunday Brunch',
-    taglineFr: 'Bufet à volonté · Karaoké · Live Music',
+    taglineFr: 'Buffet à volonté · Karaoké · Live Music',
     taglineEn: 'All-you-can-eat · Karaoke · Live Music',
     descFr:
-      'Bufet à volonté à 10 000 FCFA. Finger food, plats chauds (Ndolè, Gombo aux crabes, Blanquette de veau…), salades, desserts maison. Ambiance karaoké et live music dès 12H.',
+      'Buffet à volonté à 10 000 FCFA. Finger food, plats chauds (Ndolè, Gombo aux crabes, Blanquette de veau…), salades, desserts maison. Ambiance karaoké et live music dès 12H.',
     descEn:
       'All-you-can-eat buffet at 10,000 FCFA. Finger food, hot dishes (Ndolè, crab Gombo, Veal blanquette…), salads, homemade desserts. Karaoke and live music from 12PM.',
     schedule: 'Tous les dimanches à partir de 12H',
@@ -376,7 +376,7 @@ export default function EvenementsView({ locale }: { locale: string }) {
               {isEn ? 'Book now' : 'Réserver'}
             </Link>
             <a
-              href="https://wa.me/237699999886"
+              href="https://wa.me/237655867084"
               target="_blank"
               rel="noopener noreferrer"
               className="border border-white/20 px-8 py-4 text-sm font-bold uppercase tracking-widest text-tc-cream/70 transition-all hover:border-white/50"

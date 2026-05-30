@@ -48,7 +48,7 @@ const socialLinks = [
   },
   {
     label: 'WhatsApp',
-    href: 'https://wa.me/237699999886',
+    href: 'https://wa.me/237655867084',
     icon: <WhatsAppIcon />,
     color: 'hover:text-green-400',
   },
@@ -87,11 +87,11 @@ export default function Footer({ locale }: { locale: string }) {
             </div>
 
             <a
-              href="tel:+237699999886"
+              href="tel:+237655867084"
               className="flex items-center gap-2 text-sm text-tc-cream/60 hover:text-tc-gold transition-colors"
             >
               <Phone size={14} className="text-tc-gold" />
-              +237 699 999 886
+              +237 655 867 084
             </a>
             <p className="text-xs text-tc-cream/40 mt-1">
               {locale === 'fr' ? 'Game Room : ' : 'Game Room: '}

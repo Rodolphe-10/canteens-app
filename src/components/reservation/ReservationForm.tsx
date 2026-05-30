@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { motion } from 'framer-motion'
 import { Send, ChevronDown, CheckCircle } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { createClient } from '@/lib/supabase/client'
 
 const buffetOptions = [
   {
@@ -159,9 +160,35 @@ const inputClass = 'w-full bg-white/5 border border-white/10 px-4 py-3 text-sm t
 const labelClass = 'mb-2 block text-xs uppercase tracking-widest text-tc-cream/40'
 const sectionTitleClass = 'mb-6 text-xs uppercase tracking-[0.3em] text-tc-gold/60'
 
-export default function ReservationForm({ locale }: { locale: string }) {
+const ESPACE_SLUG_MAP: Record<string, { fr: string; en: string }> = {
+  restaurant: { fr: 'Restaurant', en: 'Restaurant' },
+  lounge: { fr: 'Lounge', en: 'Lounge' },
+  terrasse: { fr: 'Terrasse', en: 'Terrace' },
+}
+
+export function resolveEspaceFromSlug(
+  slug: string | undefined,
+  locale: string,
+): string {
+  if (!slug) return ''
+  const entry = ESPACE_SLUG_MAP[slug.toLowerCase()]
+  if (!entry) return ''
+  return locale === 'fr' ? entry.fr : entry.en
+}
+
+export default function ReservationForm({
+  locale,
+  defaultEspace,
+}: {
+  locale: string
+  defaultEspace?: string
+}) {
   const isFr = locale === 'fr'
-  const [form, setForm] = useState<FormData>(initial)
+  const prefilledEspace = resolveEspaceFromSlug(defaultEspace, locale)
+  const [form, setForm] = useState<FormData>(() => ({
+    ...initial,
+    espace: prefilledEspace,
+  }))
   const [errors, setErrors] = useState<Partial<Record<keyof FormData, boolean>>>({})
   const [sent, setSent] = useState(false)
 
@@ -170,7 +197,7 @@ export default function ReservationForm({ locale }: { locale: string }) {
 
   const required: (keyof FormData)[] = ['nom', 'telephone', 'date', 'heure', 'personnes', 'espace', 'typeEvenement']
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     const newErrors: Partial<Record<keyof FormData, boolean>> = {}
     required.forEach(k => { if (!form[k]) newErrors[k] = true })
     if (form.buffet && !form.buffetFormule) newErrors.buffetFormule = true
@@ -180,8 +207,33 @@ export default function ReservationForm({ locale }: { locale: string }) {
       firstError?.scrollIntoView({ behavior: 'smooth', block: 'center' })
       return
     }
+
+    const supabase = createClient()
+    const { error } = await supabase.from('reservations').insert({
+      nom: form.nom,
+      telephone: form.telephone,
+      email: form.email || null,
+      date_souhaitee: form.date,
+      heure_arrivee: form.heure,
+      nombre_personnes: parseInt(form.personnes, 10),
+      espace: form.espace,
+      type_evenement: form.typeEvenement || null,
+      titre_theme: form.titreEvenement || null,
+      buffet_souhaite: form.buffet,
+      formule_buffet: form.buffet ? form.buffetFormule : null,
+      animation: form.animation || 'sans',
+      allergies: form.allergies || null,
+      budget: form.budget || null,
+      message: form.message || null,
+      statut: 'nouveau',
+    })
+
+    if (error) {
+      console.error('Supabase insert error:', error)
+    }
+
     const msg = buildWhatsAppMessage(form, locale)
-    window.open(`https://wa.me/237699999886?text=${msg}`, '_blank')
+    window.open(`https://wa.me/237655867084?text=${msg}`, '_blank')
     setSent(true)
   }
 

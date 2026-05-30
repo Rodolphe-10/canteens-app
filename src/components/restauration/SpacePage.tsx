@@ -15,9 +15,12 @@ export interface SpaceConfig {
   taglineEn: string
   descriptionFr: string
   descriptionEn: string
+  ambianceFr: string[]
+  ambianceEn: string[]
   featuresFr: string[]
   featuresEn: string[]
   images: string[]
+  reservationSlug: 'restaurant' | 'lounge' | 'terrasse'
   fallbackGradient: string
   accentColor: string
   borderColor: string
@@ -39,16 +42,22 @@ export default function SpacePage({
 }) {
   const galleryRef = useRef(null)
   const infoRef = useRef(null)
+  const ambianceRef = useRef(null)
+  const ctaRef = useRef(null)
   const isGalleryInView = useInView(galleryRef, { once: true, margin: '-80px' })
   const isInfoInView = useInView(infoRef, { once: true, margin: '-80px' })
+  const isAmbianceInView = useInView(ambianceRef, { once: true, margin: '-80px' })
+  const isCtaInView = useInView(ctaRef, { once: true, margin: '-80px' })
   const [heroError, setHeroError] = useState(false)
   const [galleryErrors, setGalleryErrors] = useState<Record<number, boolean>>({})
 
   const name = locale === 'fr' ? config.nameFr : config.nameEn
   const tagline = locale === 'fr' ? config.taglineFr : config.taglineEn
   const description = locale === 'fr' ? config.descriptionFr : config.descriptionEn
+  const ambiance = locale === 'fr' ? config.ambianceFr : config.ambianceEn
   const features = locale === 'fr' ? config.featuresFr : config.featuresEn
   const dividerClass = dividerFromBorder(config.borderColor)
+  const galleryImages = config.images.slice(0, 4)
 
   return (
     <>
@@ -169,104 +178,172 @@ export default function SpacePage({
         </div>
       </section>
 
-      {config.images.length > 1 && (
+      {galleryImages.length > 0 && (
         <section ref={galleryRef} className="bg-tc-black px-4 py-16">
           <div className="mx-auto max-w-7xl">
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={isGalleryInView ? { opacity: 1, y: 0 } : {}}
-              className="mb-10 text-center"
+              className="mb-8"
             >
               <span
                 className={cn('text-xs uppercase tracking-[0.4em]', config.accentColor)}
               >
                 {locale === 'fr' ? 'Galerie' : 'Gallery'}
               </span>
+              <h2 className="mt-3 font-serif text-3xl text-tc-cream sm:text-4xl">
+                {locale === 'fr' ? 'Un aperçu de l\'espace' : 'A glimpse of the space'}
+              </h2>
             </motion.div>
 
-            <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
-              {config.images.slice(1).map((src, i) => (
-                <motion.div
-                  key={`${src}-${i}`}
-                  initial={{ opacity: 0, scale: 0.97 }}
-                  animate={isGalleryInView ? { opacity: 1, scale: 1 } : {}}
-                  transition={{ delay: i * 0.08 }}
-                  className={cn(
-                    'group relative overflow-hidden',
-                    i === 0 ? 'col-span-2 row-span-2 h-80 md:col-span-2' : 'h-40',
-                  )}
-                >
-                  <div
+            <div className="-mx-4 overflow-x-auto px-4 pb-2 scrollbar-hide snap-x snap-mandatory">
+              <div className="flex w-max gap-4">
+                {galleryImages.map((src, i) => (
+                  <motion.div
+                    key={`${src}-${i}`}
+                    initial={{ opacity: 0, x: 24 }}
+                    animate={isGalleryInView ? { opacity: 1, x: 0 } : {}}
+                    transition={{ delay: i * 0.1 }}
                     className={cn(
-                      'absolute inset-0 bg-gradient-to-br opacity-60',
-                      config.fallbackGradient,
+                      'group relative h-56 w-72 shrink-0 snap-start overflow-hidden rounded-lg border sm:h-64 sm:w-80',
+                      config.borderColor,
                     )}
-                  />
-                  {!galleryErrors[i] && (
-                    <Image
-                      src={src}
-                      alt={`${name} ${i + 2}`}
-                      fill
-                      className="object-cover transition-transform duration-500 group-hover:scale-105"
-                      sizes={i === 0 ? '(max-width:768px) 100vw, 66vw' : '(max-width:768px) 50vw, 33vw'}
-                      onError={() =>
-                        setGalleryErrors((prev) => ({ ...prev, [i]: true }))
-                      }
+                  >
+                    <div
+                      className={cn(
+                        'absolute inset-0 bg-gradient-to-br opacity-50',
+                        config.fallbackGradient,
+                      )}
                     />
-                  )}
-                  <div className="absolute inset-0 bg-black/20 opacity-0 transition-opacity group-hover:opacity-100" />
-                </motion.div>
-              ))}
+                    {!galleryErrors[i] && (
+                      <Image
+                        src={src}
+                        alt={`${name} — ${locale === 'fr' ? 'photo' : 'photo'} ${i + 1}`}
+                        fill
+                        className="object-cover transition-transform duration-500 group-hover:scale-105"
+                        sizes="320px"
+                        onError={() =>
+                          setGalleryErrors((prev) => ({ ...prev, [i]: true }))
+                        }
+                      />
+                    )}
+                    <div className="absolute inset-0 bg-gradient-to-t from-tc-black/60 via-transparent to-transparent opacity-80" />
+                  </motion.div>
+                ))}
+              </div>
             </div>
           </div>
         </section>
       )}
 
+      <section ref={ambianceRef} className="bg-tc-dark px-4 py-16">
+        <div className="mx-auto max-w-3xl">
+          <motion.div
+            initial={{ opacity: 0, y: 24 }}
+            animate={isAmbianceInView ? { opacity: 1, y: 0 } : {}}
+            transition={{ duration: 0.6 }}
+            className={cn('glass rounded-lg border p-8 sm:p-10', config.borderColor)}
+          >
+            <span
+              className={cn('text-xs uppercase tracking-[0.4em]', config.accentColor)}
+            >
+              {locale === 'fr' ? 'Ambiance' : 'Atmosphere'}
+            </span>
+            <h2 className="mt-3 mb-6 font-serif text-3xl text-tc-cream">
+              {locale === 'fr' ? 'L\'expérience sur place' : 'The on-site experience'}
+            </h2>
+            <div className="space-y-4">
+              {ambiance.map((paragraph, i) => (
+                <p key={i} className="text-base leading-relaxed text-tc-cream/70">
+                  {paragraph}
+                </p>
+              ))}
+            </div>
+          </motion.div>
+        </div>
+      </section>
+
+      <section ref={ctaRef} className="border-t border-white/5 bg-tc-black px-4 py-20">
+        <motion.div
+          initial={{ opacity: 0, y: 24 }}
+          animate={isCtaInView ? { opacity: 1, y: 0 } : {}}
+          transition={{ duration: 0.6 }}
+          className="mx-auto max-w-2xl text-center"
+        >
+          <h2 className="font-serif text-3xl text-tc-cream sm:text-4xl">
+            {locale === 'fr'
+              ? `Réservez ${config.nameFr.toLowerCase()}`
+              : `Book ${config.nameEn.toLowerCase()}`}
+          </h2>
+          <p className="mt-4 text-tc-cream/60">
+            {locale === 'fr'
+              ? 'Week-end et groupes : réservez à l\'avance pour garantir votre table.'
+              : 'Weekends and groups: book ahead to secure your table.'}
+          </p>
+          <Link
+            href={`/${locale}/reservation?espace=${config.reservationSlug}`}
+            className="mt-8 inline-flex items-center gap-2 bg-tc-gold px-10 py-4 text-sm font-bold uppercase tracking-widest text-tc-black transition-all hover:bg-tc-gold/90 hover:shadow-[0_0_25px_rgba(212,175,55,0.4)]"
+          >
+            {locale === 'fr' ? 'Réserver une table' : 'Book a table'}
+            <ArrowRight size={16} />
+          </Link>
+        </motion.div>
+      </section>
+
       <section className="border-t border-white/5 bg-tc-dark px-4 py-12">
-        <div className="mx-auto flex max-w-7xl items-center justify-between gap-4">
+        <div className="mx-auto flex max-w-7xl items-stretch justify-between gap-4">
           {config.prevSpace ? (
             <Link
               href={`/${locale}/restauration/${config.prevSpace.hrefSuffix}`}
-              className="group flex items-center gap-2 text-sm text-tc-cream/40 transition-colors hover:text-tc-cream"
+              className={cn(
+                'group glass flex flex-1 items-center gap-3 border p-4 transition-all hover:bg-white/5 sm:p-5',
+                config.borderColor,
+              )}
             >
               <ArrowLeft
-                size={14}
-                className="transition-transform group-hover:-translate-x-1"
+                size={16}
+                className={cn('shrink-0 transition-transform group-hover:-translate-x-1', config.accentColor)}
               />
-              <span>
-                {locale === 'fr'
-                  ? config.prevSpace.labelFr
-                  : config.prevSpace.labelEn}
-              </span>
+              <div>
+                <span className="block text-[10px] uppercase tracking-[0.3em] text-tc-cream/30">
+                  {locale === 'fr' ? 'Espace précédent' : 'Previous space'}
+                </span>
+                <span className="mt-1 block font-serif text-lg text-tc-cream transition-colors group-hover:text-white">
+                  {locale === 'fr'
+                    ? config.prevSpace.labelFr
+                    : config.prevSpace.labelEn}
+                </span>
+              </div>
             </Link>
           ) : (
-            <div />
+            <div className="flex-1" />
           )}
-
-          <Link
-            href={`/${locale}/restauration`}
-            className="text-xs uppercase tracking-[0.3em] text-tc-cream/30 transition-colors hover:text-tc-gold"
-          >
-            {locale === 'fr' ? 'Retour au menu' : 'Back to menu'}
-          </Link>
 
           {config.nextSpace ? (
             <Link
               href={`/${locale}/restauration/${config.nextSpace.hrefSuffix}`}
-              className="group flex items-center gap-2 text-sm text-tc-cream/40 transition-colors hover:text-tc-cream"
+              className={cn(
+                'group glass flex flex-1 items-center justify-end gap-3 border p-4 text-right transition-all hover:bg-white/5 sm:p-5',
+                config.borderColor,
+              )}
             >
-              <span>
-                {locale === 'fr'
-                  ? config.nextSpace.labelFr
-                  : config.nextSpace.labelEn}
-              </span>
+              <div>
+                <span className="block text-[10px] uppercase tracking-[0.3em] text-tc-cream/30">
+                  {locale === 'fr' ? 'Espace suivant' : 'Next space'}
+                </span>
+                <span className="mt-1 block font-serif text-lg text-tc-cream transition-colors group-hover:text-white">
+                  {locale === 'fr'
+                    ? config.nextSpace.labelFr
+                    : config.nextSpace.labelEn}
+                </span>
+              </div>
               <ArrowRight
-                size={14}
-                className="transition-transform group-hover:translate-x-1"
+                size={16}
+                className={cn('shrink-0 transition-transform group-hover:translate-x-1', config.accentColor)}
               />
             </Link>
           ) : (
-            <div />
+            <div className="flex-1" />
           )}
         </div>
       </section>

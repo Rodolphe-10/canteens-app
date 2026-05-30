@@ -5,6 +5,7 @@ import { useState } from 'react'
 import { X, Minus, Plus, Trash2, ShoppingBag, Phone, CheckCircle, ChevronRight } from 'lucide-react'
 import { useCartStore } from '@/stores/cart.store'
 import { formatPrice } from '@/lib/utils'
+import { createClient } from '@/lib/supabase/client'
 import DeliveryForm, { DeliveryData, emptyDelivery } from './DeliveryForm'
 
 type Step = 'cart' | 'delivery' | 'confirm'
@@ -90,8 +91,50 @@ export default function Cart({ locale }: { locale: string }) {
     return encodeURIComponent(msg)
   }
 
-  const handleConfirm = () => {
-    window.open(`https://wa.me/237699999886?text=${buildMessage()}`, '_blank')
+  const handleConfirm = async () => {
+    const subtotal = totalAmount()
+
+    const supabase = createClient()
+    const { data: order, error: orderError } = await supabase
+      .from('orders')
+      .insert({
+        client_nom: delivery.nom,
+        client_telephone: delivery.telephone,
+        quartier: delivery.quartier,
+        adresse: delivery.adresse,
+        repere: delivery.repere,
+        etage: delivery.etage || null,
+        instructions: delivery.instructions || null,
+        horaire: delivery.horaire,
+        heure_choisie: delivery.heureChoisie || null,
+        mode_paiement: delivery.paiement,
+        sous_total: subtotal,
+        frais_livraison: DELIVERY_FEE,
+        total: subtotal + DELIVERY_FEE,
+        statut: 'en_attente',
+      })
+      .select()
+      .single()
+
+    if (orderError) {
+      console.error('Supabase order insert error:', orderError)
+    } else if (order) {
+      const orderItems = items.map((item) => ({
+        order_id: order.id,
+        nom: item.nameFr,
+        categorie: null,
+        quantite: item.quantity,
+        prix_unitaire: item.price,
+        sous_total: item.price * item.quantity,
+      }))
+
+      const { error: itemsError } = await supabase.from('order_items').insert(orderItems)
+      if (itemsError) {
+        console.error('Supabase order_items insert error:', itemsError)
+      }
+    }
+
+    window.open(`https://wa.me/237655867084?text=${buildMessage()}`, '_blank')
     setSent(true)
     clearCart()
   }
@@ -353,7 +396,7 @@ export default function Cart({ locale }: { locale: string }) {
                   {isFr ? 'Passer à la livraison →' : 'Proceed to delivery →'}
                 </button>
                 <a
-                  href="tel:+237699999886"
+                  href="tel:+237655867084"
                   className="flex items-center justify-center gap-2 border border-white/20 py-2.5 px-6 text-sm tracking-wider text-tc-cream/50 transition-colors hover:border-tc-gold hover:text-tc-gold"
                 >
                   <Phone size={13} />

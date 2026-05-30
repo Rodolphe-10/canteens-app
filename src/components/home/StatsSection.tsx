@@ -4,9 +4,9 @@ import { motion, useInView } from 'framer-motion'
 import { useRef, useState, useEffect } from 'react'
 
 function AnimatedNumber({ target, suffix = '' }: { target: number; suffix?: string }) {
-  const [count, setCount] = useState(0)
+  const [count, setCount] = useState(target)
   const ref = useRef(null)
-  const isInView = useInView(ref, { once: true })
+  const isInView = useInView(ref, { once: true, amount: 0.1 })
 
   useEffect(() => {
     if (!isInView) return
@@ -14,6 +14,7 @@ function AnimatedNumber({ target, suffix = '' }: { target: number; suffix?: stri
     const steps = 40
     const increment = target / steps
     let current = 0
+    setCount(0)
     const timer = setInterval(() => {
       current += increment
       if (current >= target) {
@@ -26,9 +27,11 @@ function AnimatedNumber({ target, suffix = '' }: { target: number; suffix?: stri
     return () => clearInterval(timer)
   }, [isInView, target])
 
+  const display = isInView ? count : target
+
   return (
     <span ref={ref}>
-      {count}
+      {display}
       {suffix}
     </span>
   )
@@ -44,7 +47,7 @@ export default function StatsSection({ locale }: { locale: string }) {
       icon: '🪑',
     },
     {
-      value: 50,
+      value: 40,
       suffix: '+',
       labelFr: 'plats au menu',
       labelEn: 'menu dishes',
@@ -67,7 +70,7 @@ export default function StatsSection({ locale }: { locale: string }) {
   ]
 
   const ref = useRef(null)
-  const isInView = useInView(ref, { once: true, margin: '-80px' })
+  const isInView = useInView(ref, { once: true, amount: 0.1 })
 
   return (
     <section ref={ref} className="border-y border-white/5 bg-tc-black px-4 py-20">

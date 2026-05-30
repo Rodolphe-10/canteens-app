@@ -47,14 +47,14 @@ export default function ContactRestaurantPage() {
                 {
                   icon: <Phone size={18} />,
                   label: isEn ? 'Phone' : 'Téléphone',
-                  value: '+237 699 999 886',
-                  href: 'tel:+237699999886',
+                  value: '+237 655 867 084',
+                  href: 'tel:+237655867084',
                 },
                 {
                   icon: <WhatsAppIcon />,
                   label: 'WhatsApp',
-                  value: '+237 699 999 886',
-                  href: 'https://wa.me/237699999886',
+                  value: '+237 655 867 084',
+                  href: 'https://wa.me/237655867084',
                   external: true,
                 },
                 {
