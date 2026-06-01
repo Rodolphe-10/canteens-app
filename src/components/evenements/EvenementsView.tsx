@@ -7,7 +7,7 @@ import { useRef, useState } from 'react'
 import { Calendar, ArrowRight } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import FlyerModal from '@/components/ui/FlyerModal'
-import { PageBackNav } from '@/components/ui/BackButton'
+import { mediaUrls } from '@/lib/media'
 
 const events = [
   {
@@ -25,7 +25,7 @@ const events = [
       'Every Friday from 6PM, enjoy reduced prices on all Game Room games. Billiards, VR, simulator, foosball, darts… The perfect evening to unwind after work.',
     schedule: 'Tous les vendredis dès 18H',
     scheduleEn: 'Every Friday from 6PM',
-    flyer: '/images/flyers/pack_afterwork.jpg',
+    flyer: mediaUrls.flyers.packAfterwork,
     accent: 'text-tc-game-orange',
     border: 'border-tc-game-orange/30',
     badge: 'VENDREDI',
@@ -48,7 +48,7 @@ const events = [
       '5,000F per person for 1 hour unlimited access to the Game Room. VR, billiards, foosball included. The ultimate Sunday experience with friends.',
     schedule: 'Tous les dimanches',
     scheduleEn: 'Every Sunday',
-    flyer: '/images/flyers/pack_diamnche.jpg',
+    flyer: mediaUrls.flyers.packDimanche,
     accent: 'text-tc-game-red',
     border: 'border-tc-game-red/30',
     badge: 'DIMANCHE',
@@ -71,7 +71,7 @@ const events = [
       'All-you-can-eat buffet at 10,000 FCFA. Finger food, hot dishes (Ndolè, crab Gombo, Veal blanquette…), salads, homemade desserts. Karaoke and live music from 12PM.',
     schedule: 'Tous les dimanches à partir de 12H',
     scheduleEn: 'Every Sunday from 12PM',
-    flyer: '/images/flyers/brunch1.jpg',
+    flyer: mediaUrls.flyers.brunch1,
     accent: 'text-tc-gold',
     border: 'border-tc-gold/30',
     badge: 'DIMANCHE',
@@ -94,7 +94,7 @@ const events = [
       "A 100% surprise menu. Unexpected flavors. A signature The Canteen's experience. Sundays from 12PM — reservation recommended.",
     schedule: 'Tous les dimanches à partir de 12H',
     scheduleEn: 'Every Sunday from 12PM',
-    flyer: '/images/flyers/brunch2.jpg',
+    flyer: mediaUrls.flyers.brunch2,
     accent: 'text-tc-gold',
     border: 'border-tc-gold/30',
     badge: '?',
@@ -117,7 +117,7 @@ const events = [
       "DJ nights, karaoke sessions, afterwork… The Canteen's Lounge regularly hosts festive events. Open until 6AM.",
     schedule: 'Événements réguliers',
     scheduleEn: 'Regular events',
-    flyer: '/images/lounge/lounge1.jpg',
+    flyer: mediaUrls.lounge.lounge1,
     accent: 'text-purple-400',
     border: 'border-purple-500/30',
     badge: 'LOUNGE',
@@ -140,7 +140,7 @@ const events = [
       "The Canteen's is available for your private events — birthdays, corporate meetings, ceremonies. Restaurant, lounge or game room: choose your space.",
     schedule: 'Sur réservation',
     scheduleEn: 'By reservation',
-    flyer: '/images/flyers/brunch3.jpg',
+    flyer: mediaUrls.flyers.brunch3,
     accent: 'text-tc-emerald',
     border: 'border-emerald-500/30',
     badge: 'PRIVÉ',
@@ -323,7 +323,6 @@ export default function EvenementsView({ locale }: { locale: string }) {
 
   return (
     <div className="min-h-screen bg-tc-black pt-32">
-      <PageBackNav locale={locale} fallbackHref="/" />
       <section className="border-b border-white/5 px-4 py-16 text-center sm:py-20">
         <div className="mx-auto max-w-3xl">
           <motion.div

@@ -2,12 +2,13 @@
 
 import Image from 'next/image'
 import { useState } from 'react'
+import { mediaUrls } from '@/lib/media'
 
 const images = [
-  '/images/game-room/gameroom1.jpg',
-  '/images/game-room/gameroom2.jpg',
-  '/images/lounge/lounge1.jpg',
-  '/images/lounge/photo_bar1.jpg',
+  mediaUrls.gameRoom.gameroom1,
+  mediaUrls.gameRoom.gameroom2,
+  mediaUrls.lounge.lounge1,
+  mediaUrls.lounge.photoBar1,
 ]
 
 export default function GalleryStrip() {

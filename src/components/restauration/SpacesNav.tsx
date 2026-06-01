@@ -6,6 +6,7 @@ import { motion } from 'framer-motion'
 import { useState, useEffect } from 'react'
 import { ArrowRight } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { mediaUrls } from '@/lib/media'
 
 const spaces = [
   {
@@ -14,7 +15,7 @@ const spaces = [
     labelEn: 'The Restaurant',
     descFr: 'Gastronomie & élégance',
     descEn: 'Gastronomy & elegance',
-    image: '/images/restaurant/restaurant.jpg',
+    image: mediaUrls.restaurant.restaurant,
     gradient: 'from-red-950/80 to-black/90',
     fallback: 'from-red-950 to-tc-black',
   },
@@ -24,7 +25,7 @@ const spaces = [
     labelEn: 'The Lounge',
     descFr: 'Cocktails & ambiance',
     descEn: 'Cocktails & atmosphere',
-    image: '/images/lounge/lounge1.jpg',
+    image: mediaUrls.lounge.lounge1,
     gradient: 'from-tc-navy/80 to-black/90',
     fallback: 'from-tc-navy to-tc-black',
   },
@@ -34,7 +35,7 @@ const spaces = [
     labelEn: 'The Terrace',
     descFr: 'En plein air, à Dragage',
     descEn: 'Open air, in Dragage',
-    image: '/images/terrasse/terrasse1.jpg',
+    image: mediaUrls.terrasse.terrasse1,
     gradient: 'from-stone-900/80 to-black/90',
     fallback: 'from-stone-800 to-tc-black',
   },

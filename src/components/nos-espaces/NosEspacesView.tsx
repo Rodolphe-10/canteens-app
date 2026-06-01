@@ -6,7 +6,7 @@ import Link from 'next/link'
 import { useRef, useState } from 'react'
 import { ArrowRight } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { PageBackNav } from '@/components/ui/BackButton'
+import { mediaUrls } from '@/lib/media'
 
 const spaces = [
   {
@@ -20,7 +20,7 @@ const spaces = [
       "Sol damier noir et blanc, nappes immaculées, lanternes chinoises rouges et murs en marbre sombre. Le restaurant The Canteen's incarne une gastronomie haut de gamme dans un écrin dramatique et élégant. Cuisine européenne, orientale et camerounaise.",
     descEn:
       "Black and white checkered floor, immaculate tablecloths, red Chinese lanterns and dark marble walls. The Canteen's restaurant embodies high-end gastronomy in a dramatic and elegant setting. European, Oriental and Cameroonian cuisine.",
-    image: '/images/restaurant/restaurant.jpg',
+    image: mediaUrls.restaurant.restaurant,
     fallback: 'from-red-950 to-tc-black',
     accent: 'text-red-400',
     divider: 'bg-red-400',
@@ -42,7 +42,7 @@ const spaces = [
       "Canapés en velours bleu nuit et émeraude, coussins dorés, plafond en bulles blanches sculpté, comptoir en marbre noir et DJ booth Pioneer. Le Lounge est l'espace de la soirée parfaite — cocktails signature, musique live et ambiance premium.",
     descEn:
       'Navy and emerald velvet sofas, golden cushions, sculpted white bubble ceiling, black marble counter and Pioneer DJ booth. The Lounge is the perfect evening space — signature cocktails, live music and premium atmosphere.',
-    image: '/images/lounge/lounge1.jpg',
+    image: mediaUrls.lounge.lounge1,
     fallback: 'from-tc-navy to-tc-black',
     accent: 'text-tc-gold',
     divider: 'bg-tc-gold',
@@ -64,7 +64,7 @@ const spaces = [
       "Longue galerie couverte ouverte sur la rue animée de Dragage. Grandes baies vitrées, plafond industriel, vue sur les palmiers et l'effervescence du quartier. L'endroit idéal pour un déjeuner ensoleillé, un brunch entre amis ou un afterwork décontracté.",
     descEn:
       "Long covered gallery open to the lively Dragage street. Large glass bays, industrial ceiling, view of palm trees and the neighborhood's energy. The ideal spot for a sunny lunch, brunch with friends or relaxed afterwork.",
-    image: '/images/terrasse/terrasse1.jpg',
+    image: mediaUrls.terrasse.terrasse1,
     fallback: 'from-stone-800 to-tc-black',
     accent: 'text-amber-400',
     divider: 'bg-amber-400',
@@ -86,7 +86,7 @@ const spaces = [
       "Néons RGB, consoles VR immersives, billard, baby-foot, simulateurs de rallye, flipper Star Wars et machines arcade. La Game Room The Canteen's est la salle de jeux la plus complète de Yaoundé — pour tous les âges, tous les profils.",
     descEn:
       "RGB neons, immersive VR consoles, billiards, foosball, rally simulators, Star Wars pinball and arcade machines. The Canteen's Game Room is Yaoundé's most complete game room — for all ages, all profiles.",
-    image: '/images/game-room/gameroom1.jpg',
+    image: mediaUrls.gameRoom.gameroom1,
     fallback: 'from-purple-950 to-tc-black',
     accent: 'text-tc-game-cyan',
     divider: 'bg-tc-game-cyan',
@@ -222,7 +222,6 @@ export default function NosEspacesView({ locale }: { locale: string }) {
 
   return (
     <div className="min-h-screen bg-tc-black pt-32">
-      <PageBackNav locale={locale} fallbackHref="/" />
       <section className="border-b border-white/5 px-4 py-16 text-center sm:py-20">
         <div className="mx-auto max-w-3xl">
           <motion.div

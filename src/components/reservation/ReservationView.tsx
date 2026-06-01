@@ -2,7 +2,6 @@
 
 import { motion } from 'framer-motion'
 import { Phone, Clock, Users, MapPin, Info } from 'lucide-react'
-import { PageBackNav } from '@/components/ui/BackButton'
 import ReservationForm from '@/components/reservation/ReservationForm'
 
 const WhatsAppIcon = () => (
@@ -163,7 +162,6 @@ export default function ReservationView({
 
   return (
     <div className="min-h-screen bg-tc-black pt-32">
-      <PageBackNav locale={locale} fallbackHref="/" />
       <section className="border-b border-white/5 px-4 py-16 text-center sm:py-20">
         <div className="mx-auto max-w-3xl">
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>

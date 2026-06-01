@@ -3,9 +3,10 @@
 import { useState, useEffect, useRef } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
-import { Menu, X, ChevronDown } from 'lucide-react'
+import { usePathname, useRouter } from 'next/navigation'
+import { Menu, X, ChevronDown, ArrowLeft } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { mediaUrls } from '@/lib/media'
 
 interface NavLink {
   href: string
@@ -48,6 +49,17 @@ export default function Navbar({ locale }: { locale: string }) {
   const [openDropdown, setOpenDropdown] = useState<string | null>(null)
   const navRef = useRef<HTMLDivElement>(null)
   const pathname = usePathname()
+  const router = useRouter()
+
+  const isHomepage = pathname === '/fr' || pathname === '/en'
+
+  const handleBack = () => {
+    if (typeof window !== 'undefined' && window.history.length > 1) {
+      router.back()
+    } else {
+      router.push(`/${locale}`)
+    }
+  }
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 50)
@@ -81,8 +93,8 @@ export default function Navbar({ locale }: { locale: string }) {
 
   const isGameRoom = pathname.includes('/game-room')
   const logoSrc = isGameRoom
-    ? '/images/logos/logo_gameroom1-removebg-preview.png'
-    : '/images/logos/logo_restaurant1-removebg-preview.png'
+    ? mediaUrls.logos.gameroom1
+    : mediaUrls.logos.restaurant1
   const logoAlt = isGameRoom ? "The Canteen's Game Room" : "The Canteen's"
 
   return (
@@ -94,7 +106,21 @@ export default function Navbar({ locale }: { locale: string }) {
     >
       <div className="mx-auto max-w-7xl px-4 sm:px-6">
         <div className="flex h-20 items-center justify-between">
-          <Link href={`/${locale}`} className="flex shrink-0 items-center">
+          <div className="flex min-w-0 items-center gap-3 sm:gap-4">
+            {!isHomepage && (
+              <button
+                type="button"
+                onClick={handleBack}
+                className="group inline-flex shrink-0 items-center gap-1.5 text-xs uppercase tracking-widest text-tc-cream/50 transition-colors hover:text-tc-cream/90"
+              >
+                <ArrowLeft
+                  size={12}
+                  className="transition-transform group-hover:-translate-x-0.5"
+                />
+                {locale === 'fr' ? 'Retour' : 'Back'}
+              </button>
+            )}
+            <Link href={`/${locale}`} className="flex shrink-0 items-center">
             <div className="relative h-16 w-56">
               <Image
                 src={logoSrc}
@@ -109,7 +135,8 @@ export default function Navbar({ locale }: { locale: string }) {
                 priority
               />
             </div>
-          </Link>
+            </Link>
+          </div>
 
           <div
             ref={navRef}

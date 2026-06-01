@@ -6,6 +6,7 @@ import { motion, useInView } from 'framer-motion'
 import { useRef, useState, useEffect } from 'react'
 import { ArrowRight } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { mediaUrls } from '@/lib/media'
 
 const spaces = [
   {
@@ -19,7 +20,7 @@ const spaces = [
     descEn:
       'Savor refined cuisine in a unique atmosphere. Gourmet menu, impressive bar and open terrace.',
     href: '/restauration',
-    image: '/images/restaurant/restaurant.jpg',
+    image: mediaUrls.restaurant.restaurant,
     gradient: 'from-red-950/90 to-black/80',
     accentColor: 'text-tc-gold',
     buttonClass:
@@ -37,7 +38,7 @@ const spaces = [
     descEn:
       'Billiards, VR, simulators, arcade… A complete game room for all profiles, open every day.',
     href: '/game-room',
-    image: '/images/game-room/gameroom1.jpg',
+    image: mediaUrls.gameRoom.gameroom1,
     gradient: 'from-purple-950/90 to-black/80',
     accentColor: 'text-tc-game-cyan',
     buttonClass:

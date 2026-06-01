@@ -1,4 +1,5 @@
 import type { SpaceConfig } from '@/components/restauration/SpacePage'
+import { mediaUrls } from '@/lib/media'
 
 export const restaurantConfig: SpaceConfig = {
   id: 'restaurant',
@@ -40,7 +41,7 @@ export const restaurantConfig: SpaceConfig = {
     'Open until 6AM',
     'Reservation recommended',
   ],
-  images: ['/images/restaurant/restaurant.jpg'],
+  images: [mediaUrls.restaurant.restaurant],
   reservationSlug: 'restaurant',
   fallbackGradient: 'from-red-950 via-neutral-900 to-tc-black',
   accentColor: 'text-red-400',
@@ -94,11 +95,11 @@ export const loungeConfig: SpaceConfig = {
     'Open until 6AM',
   ],
   images: [
-    '/images/lounge/lounge1.jpg',
-    '/images/lounge/lounge2.jpg',
-    '/images/lounge/photo_bar1.jpg',
-    '/images/lounge/photo_bar2.jpg',
-    '/images/lounge/photo_bar3.jpg',
+    mediaUrls.lounge.lounge1,
+    mediaUrls.lounge.lounge2,
+    mediaUrls.lounge.photoBar1,
+    mediaUrls.lounge.photoBar2,
+    mediaUrls.lounge.photoBar3,
   ],
   reservationSlug: 'lounge',
   fallbackGradient: 'from-tc-navy via-slate-900 to-tc-black',
@@ -158,9 +159,9 @@ export const terrasseConfig: SpaceConfig = {
     'Available for private hire',
   ],
   images: [
-    '/images/terrasse/terrasse1.jpg',
-    '/images/terrasse/terrasse2.jpg',
-    '/images/terrasse/terrasse3.jpg',
+    mediaUrls.terrasse.terrasse1,
+    mediaUrls.terrasse.terrasse2,
+    mediaUrls.terrasse.terrasse3,
   ],
   reservationSlug: 'terrasse',
   fallbackGradient: 'from-stone-800 via-neutral-900 to-tc-black',

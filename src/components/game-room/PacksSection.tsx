@@ -5,6 +5,7 @@ import { useRef, useState } from 'react'
 import { Calendar, Clock, Zap, Image as ImageIcon } from 'lucide-react'
 import { formatPrice } from '@/lib/utils'
 import FlyerModal from '@/components/ui/FlyerModal'
+import { mediaUrls } from '@/lib/media'
 
 const gameRoomPacks = [
   {
@@ -22,7 +23,7 @@ const gameRoomPacks = [
     price: null as number | null,
     priceLabelFr: 'Tarifs réduits toute la soirée',
     priceLabelEn: 'Reduced prices all evening',
-    flyer: '/images/flyers/pack_afterwork.jpg',
+    flyer: mediaUrls.flyers.packAfterwork,
     flyerAlt: 'Friday After Work Game Night',
     items: [
       { nameFr: 'Billard', nameEn: 'Billiards', price: 1000, unitFr: 'la partie', unitEn: 'per game' },
@@ -54,7 +55,7 @@ const gameRoomPacks = [
     price: 5000,
     priceLabelFr: "par personne · 1 heure d'accès",
     priceLabelEn: 'per person · 1 hour access',
-    flyer: '/images/flyers/pack_diamnche.jpg',
+    flyer: mediaUrls.flyers.packDimanche,
     flyerAlt: 'Dimanche Brunch Game Room',
     items: [
       { nameFr: 'Réalité Virtuelle', nameEn: 'Virtual Reality', price: null as number | null, unitFr: 'inclus', unitEn: 'included' },

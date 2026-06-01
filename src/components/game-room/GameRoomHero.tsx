@@ -3,18 +3,17 @@
 import { motion } from 'framer-motion'
 import Image from 'next/image'
 import { useState } from 'react'
-import { PageBackNav } from '@/components/ui/BackButton'
+import { mediaUrls } from '@/lib/media'
 
 export default function GameRoomHero({ locale }: { locale: string }) {
   const [bgError, setBgError] = useState(false)
 
   return (
     <section className="relative flex min-h-[70vh] items-end overflow-hidden pt-16 md:pt-20">
-      <PageBackNav locale={locale} fallbackHref="/" />
       <div className="absolute inset-0 bg-gradient-to-br from-purple-950 via-tc-black to-tc-black" />
       {!bgError && (
         <Image
-          src="/images/game-room/gameroom1.jpg"
+          src={mediaUrls.gameRoom.gameroom1}
           alt="Game Room"
           fill
           className="object-cover opacity-40"

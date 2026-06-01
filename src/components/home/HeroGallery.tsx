@@ -6,25 +6,26 @@ import Link from 'next/link'
 import { motion, AnimatePresence } from 'framer-motion'
 import { ChevronDown } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { mediaUrls } from '@/lib/media'
 
 const slides = [
   {
-    src: '/images/lounge/lounge1.jpg',
+    src: mediaUrls.lounge.lounge1,
     label: 'Le Lounge',
     gradient: 'from-tc-navy/80 via-black/60 to-black/90',
   },
   {
-    src: '/images/restaurant/restaurant.jpg',
+    src: mediaUrls.restaurant.restaurant,
     label: 'Le Restaurant',
     gradient: 'from-red-950/80 via-black/60 to-black/90',
   },
   {
-    src: '/images/game-room/gameroom1.jpg',
+    src: mediaUrls.gameRoom.gameroom1,
     label: 'Game Room',
     gradient: 'from-purple-950/80 via-black/60 to-black/90',
   },
   {
-    src: '/images/terrasse/terrasse1.jpg',
+    src: mediaUrls.terrasse.terrasse1,
     label: 'La Terrasse',
     gradient: 'from-stone-900/80 via-black/60 to-black/90',
   },

@@ -1,7 +1,7 @@
 import Image from 'next/image'
 import MenuSection from '@/components/restauration/MenuSection'
 import SpacesNav from '@/components/restauration/SpacesNav'
-import { PageBackNav } from '@/components/ui/BackButton'
+import { mediaUrls } from '@/lib/media'
 
 export default async function RestaurationPage({
   params,
@@ -9,27 +9,33 @@ export default async function RestaurationPage({
   params: Promise<{ locale: string }>
 }) {
   const { locale } = await params
+  const isFr = locale === 'fr'
 
   return (
     <>
-      <PageBackNav locale={locale} fallbackHref="/" />
-      <div className="border-b border-white/5 bg-tc-dark px-4 pb-8 pt-16 text-center md:pt-20">
-        <div className="relative mx-auto mb-6 h-14 w-48">
-          <Image
-            src="/images/logos/logo_restaurant1-removebg-preview.png"
-            alt="The Canteen's"
-            fill
-            sizes="(max-width: 768px) 192px, 192px"
-            className="object-contain"
-            priority
-          />
+      <section className="relative h-48 overflow-hidden pt-16 sm:h-64 md:pt-20">
+        <Image
+          src={mediaUrls.restaurant.restaurant}
+          alt={isFr ? 'Notre carte — The Canteen\'s' : 'Our menu — The Canteen\'s'}
+          fill
+          className="object-cover"
+          priority
+          sizes="100vw"
+        />
+        <div className="absolute inset-0 bg-gradient-to-b from-black/60 to-tc-black" />
+        <div className="relative z-10 flex h-full items-center justify-center px-4">
+          <div className="text-center">
+            <h1 className="font-serif text-3xl text-tc-cream sm:text-4xl">
+              {isFr ? 'Notre Carte' : 'Our Menu'}
+            </h1>
+            <p className="mt-2 text-xs uppercase tracking-widest text-tc-gold/60">
+              {isFr
+                ? 'Commande à emporter disponible'
+                : 'Takeaway orders available'}
+            </p>
+          </div>
         </div>
-        <p className="text-xs uppercase tracking-[0.4em] text-tc-cream/40">
-          {locale === 'fr'
-            ? 'Notre carte — Commande à emporter disponible'
-            : 'Our menu — Takeaway orders available'}
-        </p>
-      </div>
+      </section>
 
       <MenuSection locale={locale} />
       <SpacesNav locale={locale} />
