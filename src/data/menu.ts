@@ -17,6 +17,10 @@ export type MenuCategory =
   | 'bieres'
   | 'softs'
   | 'brunch'
+  | 'champagnes'
+  | 'hookah'
+  | 'shots'
+  | 'sans-alcool'
 
 export interface MenuItem {
   id: string
@@ -58,6 +62,10 @@ export const menuCategories: MenuCategoryDef[] = [
   { id: 'bieres', labelFr: 'Bières', labelEn: 'Beers', icon: '🍺', type: 'drink' },
   { id: 'softs', labelFr: 'Softs & Jus', labelEn: 'Softs & Juices', icon: '🥤', type: 'drink' },
   { id: 'brunch', labelFr: 'Brunch', labelEn: 'Brunch', icon: '🥐', type: 'food' },
+  { id: 'champagnes', labelFr: 'Champagnes', labelEn: 'Champagnes', icon: '🍾', type: 'drink' },
+  { id: 'hookah', labelFr: 'Chicha', labelEn: 'Hookah', icon: '💨', type: 'drink' },
+  { id: 'shots', labelFr: 'Shots', labelEn: 'Shots', icon: '🥃', type: 'drink' },
+  { id: 'sans-alcool', labelFr: 'Sans Alcool', labelEn: 'Non-Alcoholic', icon: '🧃', type: 'drink' },
 ]
 
 export const menuItems: MenuItem[] = [

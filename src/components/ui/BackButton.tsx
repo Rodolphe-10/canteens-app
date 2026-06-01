@@ -45,9 +45,7 @@ export default function BackButton({
 export function PageBackNav({
   locale,
   fallbackHref = '/',
-  labelFr,
-  labelEn,
-}: BackButtonProps) {
+}: Pick<BackButtonProps, 'locale' | 'fallbackHref'>) {
   const router = useRouter()
 
   const handleBack = () => {
@@ -62,13 +60,13 @@ export function PageBackNav({
     <button
       type="button"
       onClick={handleBack}
-      className="group fixed left-4 top-24 z-40 inline-flex items-center gap-2 rounded-full border border-white/10 bg-black/40 px-4 py-2 text-[11px] uppercase tracking-widest text-tc-cream/50 backdrop-blur-md transition-all duration-200 hover:border-white/25 hover:bg-black/60 hover:text-tc-cream/90 sm:left-6"
+      aria-label={locale === 'fr' ? 'Retour' : 'Back'}
+      className="group fixed left-4 top-24 z-40 inline-flex items-center justify-center rounded-full border border-white/10 bg-black/40 px-2.5 py-2 text-tc-cream/50 backdrop-blur-md transition-all duration-200 hover:border-white/25 hover:bg-black/60 hover:text-tc-cream/90 sm:left-6"
     >
       <ArrowLeft
         size={12}
         className="transition-transform duration-200 group-hover:-translate-x-0.5"
       />
-      {locale === 'fr' ? (labelFr ?? 'Retour') : (labelEn ?? 'Back')}
     </button>
   )
 }

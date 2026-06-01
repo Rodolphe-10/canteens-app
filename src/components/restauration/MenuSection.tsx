@@ -3,7 +3,15 @@
 import { useState, useRef } from 'react'
 import { motion } from 'framer-motion'
 import { ShoppingBag } from 'lucide-react'
-import { menuItems, menuCategories } from '@/data/menu'
+import { menuItems as oldItems, menuCategories } from '@/data/menu'
+import { olaMenuItems } from '@/data/menu-ola'
+
+const menuItems = [
+  ...olaMenuItems,
+  ...oldItems.filter(
+    (item) => !olaMenuItems.some((o) => o.category === item.category),
+  ),
+]
 import { useCartStore } from '@/stores/cart.store'
 import MenuCard from './MenuCard'
 import Cart from './Cart'

@@ -1,7 +1,8 @@
 import Image from 'next/image'
 import MenuSection from '@/components/restauration/MenuSection'
 import SpacesNav from '@/components/restauration/SpacesNav'
-import { mediaUrls } from '@/lib/media'
+const HERO_ENTRECOTE_IMAGE =
+  'https://cqatekwthaiwvdabtfth.supabase.co/storage/v1/object/public/media/menu/la_fameuse_entrecote.webp'
 
 export default async function RestaurationPage({
   params,
@@ -15,8 +16,12 @@ export default async function RestaurationPage({
     <>
       <section className="relative h-48 overflow-hidden pt-16 sm:h-64 md:pt-20">
         <Image
-          src={mediaUrls.restaurant.restaurant}
-          alt={isFr ? 'Notre carte — The Canteen\'s' : 'Our menu — The Canteen\'s'}
+          src={HERO_ENTRECOTE_IMAGE}
+          alt={
+            isFr
+              ? 'Entrecôte Fameuse — The Canteen\'s'
+              : 'Famous Ribeye — The Canteen\'s'
+          }
           fill
           className="object-cover"
           priority
