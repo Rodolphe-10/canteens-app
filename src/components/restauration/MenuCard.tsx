@@ -74,7 +74,7 @@ export default function MenuCard({ item, locale }: { item: MenuItem; locale: str
             'relative h-32 w-full overflow-hidden text-left',
             showImage && 'cursor-zoom-in',
             !showImage && 'cursor-default',
-            isDrink && showImage && 'bg-black/20',
+            showImage && 'bg-black/20',
           )}
           aria-label={showImage ? (locale === 'fr' ? 'Agrandir la photo du plat' : 'Enlarge dish photo') : undefined}
         >
@@ -84,8 +84,10 @@ export default function MenuCard({ item, locale }: { item: MenuItem; locale: str
               alt={name}
               fill
               className={cn(
-                'transition-transform duration-500 group-hover:scale-105',
-                isDrink ? 'object-contain object-center p-2' : 'object-cover object-center',
+                'transition-transform duration-500',
+                isDrink
+                  ? 'object-contain object-center p-2'
+                  : 'object-contain object-center p-1.5 group-hover:scale-[1.02]',
               )}
               sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
               onError={() => setImgError(true)}

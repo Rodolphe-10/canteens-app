@@ -58,7 +58,7 @@ export default function HeroCarousel({ locale }: { locale: string }) {
             src={dishes[current]}
             alt={`${labels[current]} — The Canteen's`}
             fill
-            className="object-cover"
+            className="object-contain object-center p-1.5"
             priority={current === 0}
             sizes="100vw"
           />
