@@ -7,6 +7,6 @@
 export const MENU_CARD_IMAGE_WIDTH = 800
 export const MENU_CARD_IMAGE_HEIGHT = 800
 
-/** Cadre fixe : carré pleine largeur de carte, même hauteur partout dans la grille */
+/** Cadre fixe carré — sur un div (pas un button) pour que aspect-ratio calcule la hauteur avec fill */
 export const menuCardImageFrameClass =
-  'relative aspect-square w-full overflow-hidden bg-black/20'
+  'relative aspect-square w-full shrink-0 overflow-hidden bg-black/20'

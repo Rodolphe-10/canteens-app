@@ -70,25 +70,24 @@ export default function MenuCard({
         whileHover={{ y: -2 }}
         className="group flex flex-col overflow-hidden border border-white/5 bg-white/[0.03] backdrop-blur-sm transition-all duration-300 hover:border-tc-gold/30"
       >
-        <button
-          type="button"
-          onClick={handleOpenLightbox}
-          className={cn(
-            menuCardImageFrameClass,
-            'block text-left',
-            showImage && 'cursor-zoom-in',
-            !showImage && 'cursor-default',
-          )}
-          aria-label={showImage ? (locale === 'fr' ? 'Agrandir la photo du plat' : 'Enlarge dish photo') : undefined}
-        >
+        <div className={menuCardImageFrameClass}>
+          {showImage ? (
+            <button
+              type="button"
+              onClick={handleOpenLightbox}
+              className="absolute inset-0 z-[1] cursor-zoom-in"
+              aria-label={locale === 'fr' ? 'Agrandir la photo du plat' : 'Enlarge dish photo'}
+            >
+              <span className="sr-only">{name}</span>
+            </button>
+          ) : null}
+
           {showImage ? (
             <Image
               src={item.image!}
               alt={name}
               fill
-              width={MENU_CARD_IMAGE_WIDTH}
-              height={MENU_CARD_IMAGE_HEIGHT}
-              className="object-fill object-center"
+              className="object-cover object-center"
               sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
               onError={() => setImgError(true)}
             />
@@ -106,7 +105,7 @@ export default function MenuCard({
               {locale === 'fr' ? 'Populaire' : 'Popular'}
             </span>
           )}
-        </button>
+        </div>
 
         <div className="flex flex-1 flex-col gap-3 p-5">
           <div className="flex-1">
