@@ -114,13 +114,13 @@ export default function Navbar({ locale }: { locale: string }) {
               <button
                 type="button"
                 onClick={handleBack}
-                className="group inline-flex shrink-0 items-center gap-1.5 text-xs uppercase tracking-widest text-tc-cream/50 transition-colors hover:text-tc-cream/90"
+                aria-label={locale === 'fr' ? 'Retour' : 'Back'}
+                className="group inline-flex shrink-0 items-center justify-center rounded-full border border-white/10 bg-black/40 px-2.5 py-2 text-tc-cream/50 backdrop-blur-md transition-all duration-200 hover:border-white/25 hover:bg-black/60 hover:text-tc-cream/90"
               >
                 <ArrowLeft
                   size={12}
                   className="transition-transform group-hover:-translate-x-0.5"
                 />
-                {locale === 'fr' ? 'Retour' : 'Back'}
               </button>
             )}
             <Link href={`/${locale}`} className="flex shrink-0 items-center">

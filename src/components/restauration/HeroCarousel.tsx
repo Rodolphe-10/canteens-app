@@ -44,7 +44,7 @@ export default function HeroCarousel({ locale }: { locale: string }) {
   }, [next])
 
   return (
-    <section className="relative h-52 overflow-hidden pt-16 sm:h-64 md:pt-20">
+    <section className="relative h-36 overflow-hidden pt-16 sm:h-44 md:pt-20">
       <AnimatePresence mode="wait">
         <motion.div
           key={current}
