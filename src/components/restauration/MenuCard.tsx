@@ -21,11 +21,16 @@ export default function MenuCard({
   const [justAdded, setJustAdded] = useState(false)
   const [imgError, setImgError] = useState(false)
   const [isLightboxOpen, setIsLightboxOpen] = useState(false)
+  const [imageSize, setImageSize] = useState({ width: 1, height: 1 })
 
   const name = locale === 'fr' ? item.nameFr : item.nameEn ?? item.nameFr
   const description = locale === 'fr' ? item.descFr : item.descEn ?? item.descFr
   const showImage = Boolean(item.image) && !imgError
-  const [aspectRatio, setAspectRatio] = useState(4 / 3)
+
+  useEffect(() => {
+    setImgError(false)
+    setImageSize({ width: 1, height: 1 })
+  }, [item.id, item.image])
 
   useEffect(() => {
     if (!isLightboxOpen) return
@@ -66,38 +71,32 @@ export default function MenuCard({
           type="button"
           onClick={handleOpenLightbox}
           className={cn(
-            'relative w-full overflow-hidden text-left',
-            showImage && 'cursor-zoom-in',
+            'relative block w-full overflow-hidden text-left',
+            showImage && 'cursor-zoom-in bg-black/20',
             !showImage && 'cursor-default',
-            showImage && 'bg-black/20',
           )}
-          style={
-            showImage
-              ? {
-                  aspectRatio: Math.min(1.35, Math.max(0.75, aspectRatio)),
-                  maxHeight: '11rem',
-                }
-              : undefined
-          }
           aria-label={showImage ? (locale === 'fr' ? 'Agrandir la photo du plat' : 'Enlarge dish photo') : undefined}
         >
           {showImage ? (
             <Image
               src={item.image!}
               alt={name}
-              fill
-              className="object-contain object-center p-1 transition-transform duration-300 group-hover:scale-[1.02]"
+              width={imageSize.width}
+              height={imageSize.height}
+              className="mx-auto block h-auto max-h-56 w-auto max-w-full object-contain object-center"
               sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
-              onLoad={(e) => {
-                const img = e.currentTarget
+              onLoadingComplete={(img) => {
                 if (img.naturalWidth > 0 && img.naturalHeight > 0) {
-                  setAspectRatio(img.naturalWidth / img.naturalHeight)
+                  setImageSize({
+                    width: img.naturalWidth,
+                    height: img.naturalHeight,
+                  })
                 }
               }}
               onError={() => setImgError(true)}
             />
           ) : (
-            <div className="flex h-32 items-center justify-center bg-white/[0.03]">
+            <div className="flex aspect-square items-center justify-center bg-white/[0.03]">
               <span className="px-4 text-center text-xs uppercase tracking-[0.2em] text-tc-cream/20">
                 {item.nameFr}
               </span>
