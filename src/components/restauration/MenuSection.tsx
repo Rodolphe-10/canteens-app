@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { menuItems as oldItems, menuCategories } from '@/data/menu'
 import { olaMenuItems } from '@/data/menu-ola'
+import MenuCard from './MenuCard'
 
 const menuItems = [
   ...olaMenuItems,
@@ -11,10 +12,18 @@ const menuItems = [
     (item) => !olaMenuItems.some((o) => o.category === item.category),
   ),
 ]
-import MenuCard from './MenuCard'
+
+function getDefaultFoodCategory() {
+  const withPhoto = menuCategories.find(
+    (cat) =>
+      cat.type === 'food' &&
+      menuItems.some((item) => item.category === cat.id && item.image),
+  )
+  return withPhoto?.id ?? 'entrees'
+}
 
 export default function MenuSection({ locale }: { locale: string }) {
-  const [activeCategory, setActiveCategory] = useState('entrees')
+  const [activeCategory, setActiveCategory] = useState(getDefaultFoodCategory)
   const [activeType, setActiveType] = useState<'food' | 'drink'>('food')
   const [toast, setToast] = useState<{ id: number; text: string } | null>(null)
   const navRef = useRef<HTMLDivElement>(null)

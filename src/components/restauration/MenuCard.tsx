@@ -9,6 +9,8 @@ import {
   MENU_CARD_IMAGE_HEIGHT,
   MENU_CARD_IMAGE_WIDTH,
   menuCardImageFrameClass,
+  menuCardImageInnerClass,
+  menuCardImageSquareClass,
 } from '@/lib/menu-image'
 import { cn, formatPrice } from '@/lib/utils'
 import type { MenuItem } from '@/data/menu'
@@ -59,11 +61,6 @@ export default function MenuCard({
     window.setTimeout(() => setJustAdded(false), 450)
   }
 
-  const handleOpenLightbox = () => {
-    if (!showImage) return
-    setIsLightboxOpen(true)
-  }
-
   return (
     <>
       <motion.div
@@ -71,40 +68,45 @@ export default function MenuCard({
         className="group flex flex-col overflow-hidden border border-white/5 bg-white/[0.03] backdrop-blur-sm transition-all duration-300 hover:border-tc-gold/30"
       >
         <div className={menuCardImageFrameClass}>
-          {showImage ? (
-            <button
-              type="button"
-              onClick={handleOpenLightbox}
-              className="absolute inset-0 z-[1] cursor-zoom-in"
-              aria-label={locale === 'fr' ? 'Agrandir la photo du plat' : 'Enlarge dish photo'}
-            >
-              <span className="sr-only">{name}</span>
-            </button>
-          ) : null}
+          <div className={menuCardImageSquareClass}>
+            <div className={menuCardImageInnerClass}>
+              {showImage ? (
+                <>
+                  <Image
+                    src={item.image!}
+                    alt={name}
+                    fill
+                    className="object-cover object-center"
+                    sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+                    onError={() => setImgError(true)}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setIsLightboxOpen(true)}
+                    className="absolute inset-0 z-[1] cursor-zoom-in"
+                    aria-label={
+                      locale === 'fr' ? 'Agrandir la photo du plat' : 'Enlarge dish photo'
+                    }
+                  >
+                    <span className="sr-only">{name}</span>
+                  </button>
+                </>
+              ) : (
+                <div className="flex h-full w-full items-center justify-center bg-white/[0.03]">
+                  <span className="px-4 text-center text-xs uppercase tracking-[0.2em] text-tc-cream/20">
+                    {item.nameFr}
+                  </span>
+                </div>
+              )}
 
-          {showImage ? (
-            <Image
-              src={item.image!}
-              alt={name}
-              fill
-              className="object-cover object-center"
-              sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
-              onError={() => setImgError(true)}
-            />
-          ) : (
-            <div className="flex h-full w-full items-center justify-center bg-white/[0.03]">
-              <span className="px-4 text-center text-xs uppercase tracking-[0.2em] text-tc-cream/20">
-                {item.nameFr}
-              </span>
+              {item.isPopular && (
+                <span className="absolute right-3 top-3 z-10 flex items-center gap-1 rounded-full border border-tc-gold/30 bg-black/60 px-2 py-0.5 text-[10px] text-tc-gold backdrop-blur-sm">
+                  <Star size={8} fill="currentColor" />
+                  {locale === 'fr' ? 'Populaire' : 'Popular'}
+                </span>
+              )}
             </div>
-          )}
-
-          {item.isPopular && (
-            <span className="absolute right-3 top-3 z-10 flex items-center gap-1 rounded-full border border-tc-gold/30 bg-black/60 px-2 py-0.5 text-[10px] text-tc-gold backdrop-blur-sm">
-              <Star size={8} fill="currentColor" />
-              {locale === 'fr' ? 'Populaire' : 'Popular'}
-            </span>
-          )}
+          </div>
         </div>
 
         <div className="flex flex-1 flex-col gap-3 p-5">
