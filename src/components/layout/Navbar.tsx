@@ -216,10 +216,13 @@ export default function Navbar({ locale }: { locale: string }) {
             <button
               type="button"
               onClick={toggleCart}
-              className="relative p-2 text-tc-cream/70 transition-colors hover:text-tc-gold"
+              className="relative inline-flex items-center gap-2 p-2 text-tc-cream/70 transition-colors hover:text-tc-gold"
               aria-label={locale === 'fr' ? 'Ouvrir le panier' : 'Open cart'}
             >
               <ShoppingBag size={20} />
+              <span className="text-[11px] uppercase tracking-widest">
+                {locale === 'fr' ? 'Panier' : 'Cart'}
+              </span>
               {cartCount > 0 && (
                 <span className="absolute -right-0.5 -top-0.5 flex min-h-[18px] min-w-[18px] items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white">
                   {cartCount > 99 ? '99+' : cartCount}

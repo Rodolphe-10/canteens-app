@@ -8,21 +8,15 @@ import { useCartStore } from '@/stores/cart.store'
 import { cn, formatPrice } from '@/lib/utils'
 import type { MenuItem } from '@/data/menu'
 
-const DRINK_CATEGORIES = new Set([
-  'cocktails',
-  'vins',
-  'whiskies',
-  'cognacs',
-  'vodkas',
-  'bieres',
-  'softs',
-  'champagnes',
-  'shots',
-  'hookah',
-  'sans-alcool',
-])
-
-export default function MenuCard({ item, locale }: { item: MenuItem; locale: string }) {
+export default function MenuCard({
+  item,
+  locale,
+  onAdded,
+}: {
+  item: MenuItem
+  locale: string
+  onAdded?: (label: string) => void
+}) {
   const addItem = useCartStore((s) => s.addItem)
   const [justAdded, setJustAdded] = useState(false)
   const [imgError, setImgError] = useState(false)
@@ -31,7 +25,6 @@ export default function MenuCard({ item, locale }: { item: MenuItem; locale: str
   const name = locale === 'fr' ? item.nameFr : item.nameEn ?? item.nameFr
   const description = locale === 'fr' ? item.descFr : item.descEn ?? item.descFr
   const showImage = Boolean(item.image) && !imgError
-  const isDrink = DRINK_CATEGORIES.has(item.category)
 
   useEffect(() => {
     if (!isLightboxOpen) return
@@ -52,6 +45,7 @@ export default function MenuCard({ item, locale }: { item: MenuItem; locale: str
       nameFr: item.nameFr,
       price: item.price,
     })
+    onAdded?.(item.nameFr)
     setJustAdded(true)
     window.setTimeout(() => setJustAdded(false), 450)
   }
@@ -84,10 +78,7 @@ export default function MenuCard({ item, locale }: { item: MenuItem; locale: str
               alt={name}
               fill
               className={cn(
-                'transition-transform duration-500',
-                isDrink
-                  ? 'object-contain object-center p-2'
-                  : 'object-contain object-center p-1.5 group-hover:scale-[1.02]',
+                'object-cover object-center transition-transform duration-500 group-hover:scale-105',
               )}
               sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
               onError={() => setImgError(true)}

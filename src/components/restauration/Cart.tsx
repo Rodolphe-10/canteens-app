@@ -248,6 +248,15 @@ export default function Cart({ locale }: { locale: string }) {
                     </div>
                   ) : (
                     <div className="flex flex-col gap-4 px-6 py-4">
+                      <div className="flex justify-end">
+                        <button
+                          type="button"
+                          onClick={clearCart}
+                          className="text-xs text-tc-cream/40 transition-colors hover:text-red-400"
+                        >
+                          {isFr ? 'Vider le panier' : 'Clear cart'}
+                        </button>
+                      </div>
                       <AnimatePresence>
                         {items.map((item) => (
                           <motion.div

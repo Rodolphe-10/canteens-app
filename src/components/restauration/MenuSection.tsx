@@ -1,7 +1,7 @@
 'use client'
 
-import { useState, useRef } from 'react'
-import { motion } from 'framer-motion'
+import { useEffect, useRef, useState } from 'react'
+import { AnimatePresence, motion } from 'framer-motion'
 import { menuItems as oldItems, menuCategories } from '@/data/menu'
 import { olaMenuItems } from '@/data/menu-ola'
 
@@ -16,6 +16,7 @@ import MenuCard from './MenuCard'
 export default function MenuSection({ locale }: { locale: string }) {
   const [activeCategory, setActiveCategory] = useState('entrees')
   const [activeType, setActiveType] = useState<'food' | 'drink'>('food')
+  const [toast, setToast] = useState<{ id: number; text: string } | null>(null)
   const navRef = useRef<HTMLDivElement>(null)
 
   const filteredCategories = menuCategories.filter((c) => c.type === activeType)
@@ -26,6 +27,12 @@ export default function MenuSection({ locale }: { locale: string }) {
     const firstCat = menuCategories.find((c) => c.type === type)
     if (firstCat) setActiveCategory(firstCat.id)
   }
+
+  useEffect(() => {
+    if (!toast) return
+    const timeout = window.setTimeout(() => setToast(null), 2000)
+    return () => window.clearTimeout(timeout)
+  }, [toast])
 
   return (
     <section className="min-h-screen bg-tc-black">
@@ -95,7 +102,19 @@ export default function MenuSection({ locale }: { locale: string }) {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.3, delay: i * 0.04 }}
               >
-                <MenuCard item={item} locale={locale} />
+                <MenuCard
+                  item={item}
+                  locale={locale}
+                  onAdded={(label) =>
+                    setToast({
+                      id: Date.now(),
+                      text:
+                        locale === 'fr'
+                          ? `${label} ajouté au panier ✓`
+                          : `${label} added to cart ✓`,
+                    })
+                  }
+                />
               </motion.div>
             ))}
           </motion.div>
@@ -109,6 +128,21 @@ export default function MenuSection({ locale }: { locale: string }) {
           </div>
         )}
       </div>
+
+      <AnimatePresence mode="wait">
+        {toast && (
+          <motion.div
+            key={toast.id}
+            initial={{ opacity: 0, y: 24 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 24 }}
+            transition={{ duration: 0.2 }}
+            className="fixed bottom-6 left-1/2 z-50 -translate-x-1/2 rounded-full border border-tc-gold/40 bg-tc-black px-4 py-2 text-sm text-tc-cream"
+          >
+            {toast.text}
+          </motion.div>
+        )}
+      </AnimatePresence>
     </section>
   )
 }

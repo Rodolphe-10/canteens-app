@@ -44,7 +44,7 @@ export default function HeroCarousel({ locale }: { locale: string }) {
   }, [next])
 
   return (
-    <section className="relative h-36 overflow-hidden pt-16 sm:h-44 md:pt-20">
+    <section className="relative h-64 overflow-hidden pt-16 sm:h-80 md:pt-20">
       <AnimatePresence mode="wait">
         <motion.div
           key={current}
@@ -58,7 +58,7 @@ export default function HeroCarousel({ locale }: { locale: string }) {
             src={dishes[current]}
             alt={`${labels[current]} — The Canteen's`}
             fill
-            className="object-contain object-center p-1.5"
+            className="object-cover object-center"
             priority={current === 0}
             sizes="100vw"
           />
