@@ -5,6 +5,11 @@ import Image from 'next/image'
 import { AnimatePresence, motion } from 'framer-motion'
 import { Plus, Star, X } from 'lucide-react'
 import { useCartStore } from '@/stores/cart.store'
+import {
+  MENU_CARD_IMAGE_HEIGHT,
+  MENU_CARD_IMAGE_WIDTH,
+  menuCardImageFrameClass,
+} from '@/lib/menu-image'
 import { cn, formatPrice } from '@/lib/utils'
 import type { MenuItem } from '@/data/menu'
 
@@ -21,7 +26,6 @@ export default function MenuCard({
   const [justAdded, setJustAdded] = useState(false)
   const [imgError, setImgError] = useState(false)
   const [isLightboxOpen, setIsLightboxOpen] = useState(false)
-  const [imageSize, setImageSize] = useState({ width: 1, height: 1 })
 
   const name = locale === 'fr' ? item.nameFr : item.nameEn ?? item.nameFr
   const description = locale === 'fr' ? item.descFr : item.descEn ?? item.descFr
@@ -29,7 +33,6 @@ export default function MenuCard({
 
   useEffect(() => {
     setImgError(false)
-    setImageSize({ width: 1, height: 1 })
   }, [item.id, item.image])
 
   useEffect(() => {
@@ -71,8 +74,9 @@ export default function MenuCard({
           type="button"
           onClick={handleOpenLightbox}
           className={cn(
-            'relative block w-full overflow-hidden text-left',
-            showImage && 'cursor-zoom-in bg-black/20',
+            menuCardImageFrameClass,
+            'block text-left',
+            showImage && 'cursor-zoom-in',
             !showImage && 'cursor-default',
           )}
           aria-label={showImage ? (locale === 'fr' ? 'Agrandir la photo du plat' : 'Enlarge dish photo') : undefined}
@@ -81,22 +85,15 @@ export default function MenuCard({
             <Image
               src={item.image!}
               alt={name}
-              width={imageSize.width}
-              height={imageSize.height}
-              className="mx-auto block h-auto max-h-56 w-auto max-w-full object-contain object-center"
+              fill
+              width={MENU_CARD_IMAGE_WIDTH}
+              height={MENU_CARD_IMAGE_HEIGHT}
+              className="object-fill object-center"
               sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
-              onLoadingComplete={(img) => {
-                if (img.naturalWidth > 0 && img.naturalHeight > 0) {
-                  setImageSize({
-                    width: img.naturalWidth,
-                    height: img.naturalHeight,
-                  })
-                }
-              }}
               onError={() => setImgError(true)}
             />
           ) : (
-            <div className="flex aspect-square items-center justify-center bg-white/[0.03]">
+            <div className="flex h-full w-full items-center justify-center bg-white/[0.03]">
               <span className="px-4 text-center text-xs uppercase tracking-[0.2em] text-tc-cream/20">
                 {item.nameFr}
               </span>
@@ -171,8 +168,8 @@ export default function MenuCard({
               <Image
                 src={item.image!}
                 alt={name}
-                width={1200}
-                height={900}
+                width={MENU_CARD_IMAGE_WIDTH}
+                height={MENU_CARD_IMAGE_HEIGHT}
                 className="h-auto max-h-[90vh] w-full rounded object-contain"
               />
             </motion.div>
