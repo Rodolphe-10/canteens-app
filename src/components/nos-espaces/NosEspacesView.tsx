@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { useRef, useState } from 'react'
 import { ArrowRight } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import InfiniteGalleryStrip from '@/components/ui/InfiniteGalleryStrip'
 import { mediaUrls } from '@/lib/media'
 
 const spaces = [
@@ -240,6 +241,24 @@ export default function NosEspacesView({ locale }: { locale: string }) {
               : 'Quatre univers distincts sous un même toit — chacun avec sa propre identité, son ambiance et son expérience.'}
           </p>
           </motion.div>
+        </div>
+      </section>
+
+      <section className="border-b border-white/5 bg-tc-black px-4 py-16">
+        <div className="mx-auto max-w-7xl">
+          <div className="mb-8 text-center">
+            <span className="text-xs uppercase tracking-[0.4em] text-tc-gold/60">
+              {isEn ? 'Gallery' : 'Galerie'}
+            </span>
+            <h2 className="mt-3 font-serif text-3xl text-tc-cream sm:text-4xl">
+              {isEn ? 'Our spaces in pictures' : 'Nos espaces en images'}
+            </h2>
+          </div>
+          <InfiniteGalleryStrip
+            images={spaces.map((s) => s.image)}
+            altPrefix={isEn ? 'The Canteen\'s space' : 'Espace The Canteen\'s'}
+            fallbackGradient="from-tc-navy to-tc-black"
+          />
         </div>
       </section>
 

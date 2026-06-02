@@ -22,6 +22,9 @@ interface CartStore {
   totalAmount: () => number
 }
 
+export const selectCartItemCount = (state: CartStore) =>
+  state.items.reduce((sum, i) => sum + i.quantity, 0)
+
 export const useCartStore = create<CartStore>((set, get) => ({
   items: [],
   isOpen: false,

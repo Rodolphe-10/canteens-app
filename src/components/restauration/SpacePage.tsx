@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { useRef, useState } from 'react'
 import { ArrowLeft, ArrowRight } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import InfiniteGalleryStrip from '@/components/ui/InfiniteGalleryStrip'
 
 export interface SpaceConfig {
   id: string
@@ -49,7 +50,6 @@ export default function SpacePage({
   const isAmbianceInView = useInView(ambianceRef, { once: true, margin: '-80px' })
   const isCtaInView = useInView(ctaRef, { once: true, margin: '-80px' })
   const [heroError, setHeroError] = useState(false)
-  const [galleryErrors, setGalleryErrors] = useState<Record<number, boolean>>({})
 
   const name = locale === 'fr' ? config.nameFr : config.nameEn
   const tagline = locale === 'fr' ? config.taglineFr : config.taglineEn
@@ -57,7 +57,7 @@ export default function SpacePage({
   const ambiance = locale === 'fr' ? config.ambianceFr : config.ambianceEn
   const features = locale === 'fr' ? config.featuresFr : config.featuresEn
   const dividerClass = dividerFromBorder(config.borderColor)
-  const galleryImages = config.images.slice(0, 4)
+  const galleryImages = config.images
 
   return (
     <>
@@ -196,42 +196,15 @@ export default function SpacePage({
               </h2>
             </motion.div>
 
-            <div className="-mx-4 overflow-x-auto px-4 pb-2 scrollbar-hide snap-x snap-mandatory">
-              <div className="flex w-max gap-4">
-                {galleryImages.map((src, i) => (
-                  <motion.div
-                    key={`${src}-${i}`}
-                    initial={{ opacity: 0, x: 24 }}
-                    animate={isGalleryInView ? { opacity: 1, x: 0 } : {}}
-                    transition={{ delay: i * 0.1 }}
-                    className={cn(
-                      'group relative h-56 w-72 shrink-0 snap-start overflow-hidden rounded-lg border sm:h-64 sm:w-80',
-                      config.borderColor,
-                    )}
-                  >
-                    <div
-                      className={cn(
-                        'absolute inset-0 bg-gradient-to-br opacity-50',
-                        config.fallbackGradient,
-                      )}
-                    />
-                    {!galleryErrors[i] && (
-                      <Image
-                        src={src}
-                        alt={`${name} — ${locale === 'fr' ? 'photo' : 'photo'} ${i + 1}`}
-                        fill
-                        className="object-cover transition-transform duration-500 group-hover:scale-105"
-                        sizes="320px"
-                        onError={() =>
-                          setGalleryErrors((prev) => ({ ...prev, [i]: true }))
-                        }
-                      />
-                    )}
-                    <div className="absolute inset-0 bg-gradient-to-t from-tc-black/60 via-transparent to-transparent opacity-80" />
-                  </motion.div>
-                ))}
-              </div>
-            </div>
+            <InfiniteGalleryStrip
+              images={galleryImages}
+              altPrefix={name}
+              fallbackGradient={config.fallbackGradient}
+              cardClassName={cn(
+                'h-56 w-72 sm:h-64 sm:w-80',
+                config.borderColor,
+              )}
+            />
           </div>
         </section>
       )}

@@ -2,7 +2,6 @@
 
 import { useState, useRef } from 'react'
 import { motion } from 'framer-motion'
-import { ShoppingBag } from 'lucide-react'
 import { menuItems as oldItems, menuCategories } from '@/data/menu'
 import { olaMenuItems } from '@/data/menu-ola'
 
@@ -12,16 +11,12 @@ const menuItems = [
     (item) => !olaMenuItems.some((o) => o.category === item.category),
   ),
 ]
-import { useCartStore } from '@/stores/cart.store'
 import MenuCard from './MenuCard'
-import Cart from './Cart'
 
 export default function MenuSection({ locale }: { locale: string }) {
   const [activeCategory, setActiveCategory] = useState('entrees')
   const [activeType, setActiveType] = useState<'food' | 'drink'>('food')
   const navRef = useRef<HTMLDivElement>(null)
-  const toggleCart = useCartStore((s) => s.toggleCart)
-  const totalItems = useCartStore((s) => s.totalItems)
 
   const filteredCategories = menuCategories.filter((c) => c.type === activeType)
   const filteredItems = menuItems.filter((item) => item.category === activeCategory)
@@ -36,7 +31,7 @@ export default function MenuSection({ locale }: { locale: string }) {
     <section className="min-h-screen bg-tc-black">
       <div className="sticky top-16 z-30 border-b border-white/10 bg-tc-black/95 backdrop-blur-md md:top-20">
         <div className="mx-auto max-w-7xl px-4">
-          <div className="flex items-center justify-between py-4">
+          <div className="flex items-center py-4">
             <div className="flex gap-1 rounded-full bg-white/5 p-1">
               {(['food', 'drink'] as const).map((type) => (
                 <button
@@ -51,29 +46,14 @@ export default function MenuSection({ locale }: { locale: string }) {
                 >
                   {type === 'food'
                     ? locale === 'fr'
-                      ? '🍽️ Plats'
-                      : '🍽️ Food'
+                      ? 'Plats'
+                      : 'Food'
                     : locale === 'fr'
-                      ? '🍹 Boissons'
-                      : '🍹 Drinks'}
+                      ? 'Boissons'
+                      : 'Drinks'}
                 </button>
               ))}
             </div>
-            <button
-              type="button"
-              onClick={toggleCart}
-              className="relative flex items-center gap-2 border border-tc-gold/40 px-4 py-2 text-sm text-tc-gold transition-all hover:bg-tc-gold/10"
-            >
-              <ShoppingBag size={16} />
-              <span className="hidden text-xs font-bold uppercase tracking-wider sm:inline">
-                {locale === 'fr' ? 'Panier' : 'Cart'}
-              </span>
-              {totalItems() > 0 && (
-                <span className="absolute -right-2 -top-2 flex h-5 w-5 items-center justify-center rounded-full bg-tc-gold text-xs font-bold text-tc-black">
-                  {totalItems()}
-                </span>
-              )}
-            </button>
           </div>
 
           <div
@@ -92,7 +72,6 @@ export default function MenuSection({ locale }: { locale: string }) {
                     : 'border-white/10 text-tc-cream/50 hover:border-white/30 hover:text-tc-cream'
                 }`}
               >
-                <span>{cat.icon}</span>
                 <span>{locale === 'fr' ? cat.labelFr : cat.labelEn}</span>
               </button>
             ))}
@@ -130,8 +109,6 @@ export default function MenuSection({ locale }: { locale: string }) {
           </div>
         )}
       </div>
-
-      <Cart locale={locale} />
     </section>
   )
 }

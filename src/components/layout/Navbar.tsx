@@ -4,9 +4,10 @@ import { useState, useEffect, useRef } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { Menu, X, ChevronDown, ArrowLeft } from 'lucide-react'
+import { Menu, X, ChevronDown, ArrowLeft, ShoppingBag } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { mediaUrls } from '@/lib/media'
+import { selectCartItemCount, useCartStore } from '@/stores/cart.store'
 
 interface NavLink {
   href: string
@@ -50,6 +51,8 @@ export default function Navbar({ locale }: { locale: string }) {
   const navRef = useRef<HTMLDivElement>(null)
   const pathname = usePathname()
   const router = useRouter()
+  const cartCount = useCartStore(selectCartItemCount)
+  const toggleCart = useCartStore((s) => s.toggleCart)
 
   const isHomepage = pathname === '/fr' || pathname === '/en'
 
@@ -210,6 +213,19 @@ export default function Navbar({ locale }: { locale: string }) {
           </div>
 
           <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={toggleCart}
+              className="relative p-2 text-tc-cream/70 transition-colors hover:text-tc-gold"
+              aria-label={locale === 'fr' ? 'Ouvrir le panier' : 'Open cart'}
+            >
+              <ShoppingBag size={20} />
+              {cartCount > 0 && (
+                <span className="absolute -right-0.5 -top-0.5 flex min-h-[18px] min-w-[18px] items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white">
+                  {cartCount > 99 ? '99+' : cartCount}
+                </span>
+              )}
+            </button>
             <Link
               href={newPath}
               className="hidden rounded border border-white/10 px-3 py-1.5 text-xs uppercase tracking-widest text-tc-cream/50 transition-colors hover:text-tc-gold lg:flex"
