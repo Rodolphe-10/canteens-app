@@ -25,6 +25,7 @@ export default function MenuCard({
   const name = locale === 'fr' ? item.nameFr : item.nameEn ?? item.nameFr
   const description = locale === 'fr' ? item.descFr : item.descEn ?? item.descFr
   const showImage = Boolean(item.image) && !imgError
+  const [aspectRatio, setAspectRatio] = useState(4 / 3)
 
   useEffect(() => {
     if (!isLightboxOpen) return
@@ -65,11 +66,19 @@ export default function MenuCard({
           type="button"
           onClick={handleOpenLightbox}
           className={cn(
-            'relative h-32 w-full overflow-hidden text-left',
+            'relative w-full overflow-hidden text-left',
             showImage && 'cursor-zoom-in',
             !showImage && 'cursor-default',
             showImage && 'bg-black/20',
           )}
+          style={
+            showImage
+              ? {
+                  aspectRatio: Math.min(1.35, Math.max(0.75, aspectRatio)),
+                  maxHeight: '11rem',
+                }
+              : undefined
+          }
           aria-label={showImage ? (locale === 'fr' ? 'Agrandir la photo du plat' : 'Enlarge dish photo') : undefined}
         >
           {showImage ? (
@@ -77,10 +86,14 @@ export default function MenuCard({
               src={item.image!}
               alt={name}
               fill
-              className={cn(
-                'object-cover object-center transition-transform duration-500 group-hover:scale-105',
-              )}
+              className="object-contain object-center p-1 transition-transform duration-300 group-hover:scale-[1.02]"
               sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+              onLoad={(e) => {
+                const img = e.currentTarget
+                if (img.naturalWidth > 0 && img.naturalHeight > 0) {
+                  setAspectRatio(img.naturalWidth / img.naturalHeight)
+                }
+              }}
               onError={() => setImgError(true)}
             />
           ) : (

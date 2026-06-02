@@ -248,11 +248,11 @@ export default function Cart({ locale }: { locale: string }) {
                     </div>
                   ) : (
                     <div className="flex flex-col gap-4 px-6 py-4">
-                      <div className="flex justify-end">
+                      <div className="mb-1 flex justify-end">
                         <button
                           type="button"
                           onClick={clearCart}
-                          className="text-xs text-tc-cream/40 transition-colors hover:text-red-400"
+                          className="rounded-full border border-white/15 bg-white/[0.03] px-3 py-1.5 text-[11px] uppercase tracking-widest text-tc-cream/50 transition-colors hover:border-red-400/35 hover:bg-red-500/10 hover:text-red-300"
                         >
                           {isFr ? 'Vider le panier' : 'Clear cart'}
                         </button>
@@ -377,7 +377,7 @@ export default function Cart({ locale }: { locale: string }) {
                     <button
                       type="button"
                       onClick={clearCart}
-                      className="py-1 text-center text-xs text-tc-cream/20 transition-colors hover:text-red-400"
+                      className="mx-auto rounded-full border border-white/15 bg-white/[0.03] px-3 py-1.5 text-[11px] uppercase tracking-widest text-tc-cream/50 transition-colors hover:border-red-400/35 hover:bg-red-500/10 hover:text-red-300"
                     >
                       {isFr ? 'Vider le panier' : 'Clear cart'}
                     </button>
