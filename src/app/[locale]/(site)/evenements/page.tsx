@@ -5,7 +5,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { useParams } from 'next/navigation'
 import { AnimatePresence, motion } from 'framer-motion'
-import { Calendar } from 'lucide-react'
+import { Calendar, X } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { cn } from '@/lib/utils'
 
@@ -171,6 +171,7 @@ export default function EvenementsPage() {
   const [events, setEvents] = useState<Event[]>([])
   const [loading, setLoading] = useState(true)
   const [flyerIndex, setFlyerIndex] = useState(0)
+  const [lightbox, setLightbox] = useState<string | null>(null)
 
   const fetchEvents = useCallback(async () => {
     const supabase = createClient()
@@ -381,151 +382,249 @@ export default function EvenementsPage() {
       ) : null}
 
       {/* Section 2 — Agenda */}
-      <section className="px-4 pb-20 pt-8 sm:px-6">
-        <div className="mx-auto max-w-4xl">
+      <section className="px-4 pb-24 pt-8 sm:px-6">
+        <div className="mx-auto max-w-6xl">
           {loading ? (
             <p className="py-16 text-center text-sm text-tc-cream/40">
               {isFr ? 'Chargement…' : 'Loading…'}
             </p>
-          ) : (
-            <div className="space-y-2">
-              {eventsByMonth.map(([monthLabel, monthEvents]) => (
-                <div key={monthLabel}>
-                  <div className="flex items-center gap-4 py-6">
-                    <div className="h-px flex-1 bg-tc-gold/20" />
-                    <span className="text-xs uppercase tracking-[0.4em] text-white/30">
-                      {monthLabel} · {monthEvents.length}{' '}
-                      {monthEvents.length > 1
-                        ? isFr
-                          ? 'événements'
-                          : 'events'
-                        : isFr
-                          ? 'événement'
-                          : 'event'}
-                    </span>
-                    <div className="h-px flex-1 bg-tc-gold/20" />
-                  </div>
+          ) : (() => {
+            const upcomingNonFeatured = events.filter(
+              (e) => new Date(e.date_event).getTime() > now && e.id !== featuredEvent?.id
+            )
+            const pastEvents = events.filter(
+              (e) => new Date(e.date_event).getTime() <= now
+            )
+            const pastByMonth = pastEvents.reduce<Record<string, Event[]>>((acc, ev) => {
+              const key = capitalize(
+                new Date(ev.date_event).toLocaleDateString(
+                  locale === 'fr' ? 'fr-FR' : 'en-US',
+                  { month: 'long', year: 'numeric' }
+                )
+              )
+              if (!acc[key]) acc[key] = []
+              acc[key].push(ev)
+              return acc
+            }, {})
+            const pastMonths = Object.entries(pastByMonth).sort(
+              ([, a], [, b]) =>
+                new Date(b[0]?.date_event ?? 0).getTime() -
+                new Date(a[0]?.date_event ?? 0).getTime()
+            )
 
-                  <div className="space-y-3">
-                    {monthEvents.map((event, i) => {
-                      const isPast = new Date(event.date_event).getTime() < now
-                      const typeStyle = getTypeStyle(event.type)
-                      const flyer = event.flyers?.[0]
-                      const extraFlyers = (event.flyers?.length ?? 0) - 1
-                      const placesLeft =
-                        event.places_total != null
-                          ? Math.max(0, event.places_total - event.places_reserved)
-                          : null
-                      const fillPct =
-                        event.places_total && event.places_total > 0
-                          ? Math.min(
-                              100,
-                              (event.places_reserved / event.places_total) * 100,
-                            )
-                          : 0
-
-                      return (
-                        <motion.article
+            return (
+              <div>
+                {/* Prochains événements (hors à la une) */}
+                {upcomingNonFeatured.length > 0 && (
+                  <div className="mb-16">
+                    <div className="flex items-center gap-4 mb-8">
+                      <div className="h-px flex-1 bg-tc-gold/20" />
+                      <span className="text-xs uppercase tracking-[0.4em] text-white/40">
+                        {isFr ? 'Prochains événements' : 'Upcoming events'}
+                      </span>
+                      <div className="h-px flex-1 bg-tc-gold/20" />
+                    </div>
+                    <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+                      {upcomingNonFeatured.map((event, i) => (
+                        <EventCard
                           key={event.id}
-                          initial={{ opacity: 0, y: 20 }}
-                          whileInView={{ opacity: 1, y: 0 }}
-                          viewport={{ once: true, margin: '-40px' }}
-                          transition={{ duration: 0.4, delay: i * 0.05 }}
-                          className={cn(
-                            'flex items-start gap-4 rounded-2xl border border-white/5 bg-white/[0.02] p-4 transition hover:border-white/10 sm:gap-6',
-                            isPast && 'opacity-60',
-                          )}
-                        >
-                          {flyer ? (
-                            <div className="relative h-24 w-24 shrink-0 overflow-hidden rounded-xl sm:h-32 sm:w-32">
-                              <Image
-                                src={flyer}
-                                alt={event.titre}
-                                fill
-                                className="object-cover"
-                                sizes="(max-width: 640px) 96px, 128px"
-                              />
-                            </div>
-                          ) : (
-                            <div
-                              className={cn(
-                                'flex h-24 w-24 shrink-0 items-center justify-center rounded-xl font-serif text-2xl text-white/40 sm:h-32 sm:w-32',
-                                typeStyle.placeholder,
-                              )}
-                            >
-                              {typeStyle.initial}
-                            </div>
-                          )}
-
-                          <div className="min-w-0 flex-1">
-                            <div className="flex flex-wrap items-center gap-2">
-                              {isPast ? (
-                                <span className="rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-[10px] uppercase tracking-wider text-white/40">
-                                  {isFr ? 'Terminé' : 'Ended'}
-                                </span>
-                              ) : (
-                                <span
-                                  className={cn(
-                                    'rounded-full border px-2 py-0.5 text-[10px] uppercase tracking-wider',
-                                    typeStyle.pill,
-                                  )}
-                                >
-                                  {isFr ? typeStyle.labelFr : typeStyle.labelEn}
-                                </span>
-                              )}
-                              {extraFlyers > 0 ? (
-                                <span className="text-xs text-white/20">
-                                  + {extraFlyers}{' '}
-                                  {extraFlyers > 1
-                                    ? isFr
-                                      ? 'flyers'
-                                      : 'flyers'
-                                    : isFr
-                                      ? 'flyer'
-                                      : 'flyer'}
-                                </span>
-                              ) : null}
-                            </div>
-
-                            <h3 className="mt-2 text-sm font-medium text-tc-cream sm:text-base">
-                              {event.titre}
-                            </h3>
-
-                            {event.description ? (
-                              <p className="mt-1 line-clamp-2 text-xs text-white/40">
-                                {event.description}
-                              </p>
-                            ) : null}
-
-                            <p className="mt-2 text-xs text-white/30">
-                              {formatCardDate(event.date_event, locale)}
-                            </p>
-
-                            {event.places_total != null && event.places_total > 0 ? (
-                              <div className="mt-3 max-w-xs">
-                                <div className="h-1 overflow-hidden rounded-full bg-white/10">
-                                  <div
-                                    className="h-full rounded-full bg-tc-gold transition-all"
-                                    style={{ width: `${fillPct}%` }}
-                                  />
-                                </div>
-                                <p className="mt-1 text-xs text-white/30">
-                                  {placesLeft}{' '}
-                                  {isFr ? 'places restantes' : 'spots left'}
-                                </p>
-                              </div>
-                            ) : null}
-                          </div>
-                        </motion.article>
-                      )
-                    })}
+                          event={event}
+                          index={i}
+                          locale={locale}
+                          isFr={isFr}
+                          isPast={false}
+                          onFlyerClick={setLightbox}
+                        />
+                      ))}
+                    </div>
                   </div>
-                </div>
-              ))}
-            </div>
-          )}
+                )}
+
+                {/* Événements passés */}
+                {pastMonths.length > 0 && (
+                  <div>
+                    {/* Titre de section */}
+                    <div className="flex items-center gap-4 mb-10">
+                      <div className="h-px flex-1 bg-white/10" />
+                      <span className="text-xs uppercase tracking-[0.4em] text-white/30">
+                        {isFr ? 'Événements passés' : 'Past events'}
+                      </span>
+                      <div className="h-px flex-1 bg-white/10" />
+                    </div>
+
+                    {pastMonths.map(([monthLabel, monthEvents]) => (
+                      <div key={monthLabel} className="mb-12">
+                        {/* Header mois */}
+                        <div className="flex items-center gap-3 mb-6">
+                          <span className="text-[10px] uppercase tracking-[0.35em] text-white/20">
+                            {monthLabel}
+                          </span>
+                          <div className="h-px flex-1 bg-white/5" />
+                          <span className="text-[10px] text-white/20">
+                            {monthEvents.length} {monthEvents.length > 1 ? (isFr ? 'événements' : 'events') : (isFr ? 'événement' : 'event')}
+                          </span>
+                        </div>
+
+                        {/* Grille de cartes */}
+                        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+                          {monthEvents.map((event, i) => (
+                            <EventCard
+                              key={event.id}
+                              event={event}
+                              index={i}
+                              locale={locale}
+                              isFr={isFr}
+                              isPast={true}
+                              onFlyerClick={setLightbox}
+                            />
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )
+          })()}
         </div>
       </section>
+
+      {/* Lightbox flyer */}
+      <AnimatePresence>
+        {lightbox && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="fixed inset-0 z-[300] flex items-center justify-center bg-black/92 p-4"
+            onClick={() => setLightbox(null)}
+          >
+            <button
+              type="button"
+              onClick={() => setLightbox(null)}
+              className="absolute right-4 top-4 rounded-full bg-white/10 p-2 text-white transition hover:bg-white/20"
+              aria-label={isFr ? 'Fermer' : 'Close'}
+            >
+              <X size={20} />
+            </button>
+            <motion.div
+              initial={{ scale: 0.88, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.88, opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className="relative max-h-[92vh] w-full max-w-lg"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <Image
+                src={lightbox}
+                alt="Flyer"
+                width={800}
+                height={1000}
+                className="h-auto max-h-[92vh] w-full rounded-2xl object-contain shadow-2xl"
+              />
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
+  )
+}
+
+// ─── Composant carte événement ────────────────────────────────────────────────
+function EventCard({
+  event,
+  index,
+  locale,
+  isFr,
+  isPast,
+  onFlyerClick,
+}: {
+  event: Event
+  index: number
+  locale: string
+  isFr: boolean
+  isPast: boolean
+  onFlyerClick: (src: string) => void
+}) {
+  const typeStyle = getTypeStyle(event.type)
+  const flyer = event.flyers?.[0]
+
+  return (
+    <motion.article
+      initial={{ opacity: 0, y: 16 }}
+      whileInView={{ opacity: isPast ? 0.75 : 1, y: 0 }}
+      viewport={{ once: true, margin: '-30px' }}
+      transition={{ duration: 0.35, delay: index * 0.06 }}
+      className="flex flex-col overflow-hidden rounded-2xl border border-white/5 bg-white/[0.03] transition hover:border-white/10"
+    >
+      {/* Image flyer */}
+      <div className="relative w-full overflow-hidden" style={{ aspectRatio: '3/4' }}>
+        {flyer ? (
+          <button
+            type="button"
+            onClick={() => onFlyerClick(flyer)}
+            className="absolute inset-0 z-10 cursor-zoom-in"
+            aria-label={isFr ? 'Agrandir le flyer' : 'Enlarge flyer'}
+          >
+            <span className="sr-only">{event.titre}</span>
+          </button>
+        ) : null}
+        {flyer ? (
+          <Image
+            src={flyer}
+            alt={event.titre}
+            fill
+            className="object-cover transition-transform duration-500 hover:scale-105"
+            sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
+          />
+        ) : (
+          <div
+            className={cn(
+              'flex h-full w-full items-center justify-center font-serif text-4xl text-white/20',
+              typeStyle.placeholder,
+            )}
+          >
+            {typeStyle.initial}
+          </div>
+        )}
+        {/* Badge type */}
+        <span
+          className={cn(
+            'absolute left-2 top-2 z-20 rounded-full border px-2 py-0.5 text-[9px] uppercase tracking-wider backdrop-blur-sm',
+            isPast
+              ? 'border-white/10 bg-black/50 text-white/40'
+              : typeStyle.pill,
+          )}
+        >
+          {isPast ? (isFr ? 'Terminé' : 'Ended') : (isFr ? typeStyle.labelFr : typeStyle.labelEn)}
+        </span>
+      </div>
+
+      {/* Infos */}
+      <div className="flex flex-1 flex-col gap-1.5 p-3">
+        <h3 className="line-clamp-2 text-xs font-medium leading-snug text-tc-cream sm:text-sm">
+          {event.titre}
+        </h3>
+        {event.description && (
+          <p className="line-clamp-2 text-[10px] leading-relaxed text-white/35">
+            {event.description}
+          </p>
+        )}
+        <p className="mt-auto pt-2 text-[10px] text-white/25">
+          {capitalize(
+            new Date(event.date_event).toLocaleDateString(
+              locale === 'fr' ? 'fr-FR' : 'en-US',
+              { day: 'numeric', month: 'short', year: 'numeric' }
+            )
+          )}
+        </p>
+        {event.flyers && event.flyers.length > 1 && (
+          <p className="text-[9px] text-white/20">
+            + {event.flyers.length - 1} flyer{event.flyers.length > 2 ? 's' : ''}
+          </p>
+        )}
+      </div>
+    </motion.article>
   )
 }
