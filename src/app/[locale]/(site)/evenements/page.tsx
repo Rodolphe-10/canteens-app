@@ -11,16 +11,17 @@ import { cn } from '@/lib/utils'
 
 interface Event {
   id: string
-  title: string
+  titre: string
   description?: string
   type: string
-  date_start: string
+  date_event: string
   date_end?: string
   deadline_reservation?: string
   places_total?: number
   places_reserved: number
   flyers: string[]
   is_featured: boolean
+  is_visible: boolean
 }
 
 const TYPE_STYLES: Record<
@@ -126,7 +127,7 @@ function groupEventsByMonth(events: Event[], locale: string) {
   const loc = locale === 'fr' ? 'fr-FR' : 'en-US'
   const grouped = events.reduce<Record<string, Event[]>>((acc, ev) => {
     const key = capitalize(
-      new Date(ev.date_start).toLocaleDateString(loc, { month: 'long', year: 'numeric' }),
+      new Date(ev.date_event).toLocaleDateString(loc, { month: 'long', year: 'numeric' }),
     )
     if (!acc[key]) acc[key] = []
     acc[key].push(ev)
@@ -134,8 +135,8 @@ function groupEventsByMonth(events: Event[], locale: string) {
   }, {})
 
   return Object.entries(grouped).sort(([, a], [, b]) => {
-    const ta = new Date(a[0]?.date_start ?? 0).getTime()
-    const tb = new Date(b[0]?.date_start ?? 0).getTime()
+    const ta = new Date(a[0]?.date_event ?? 0).getTime()
+    const tb = new Date(b[0]?.date_event ?? 0).getTime()
     return tb - ta
   })
 }
@@ -177,7 +178,7 @@ export default function EvenementsPage() {
       .from('events')
       .select('*')
       .eq('is_visible', true)
-      .order('date_start', { ascending: false })
+      .order('date_event', { ascending: false })
 
     setEvents((data as Event[]) ?? [])
     setLoading(false)
@@ -206,10 +207,10 @@ export default function EvenementsPage() {
   const futureEvents = useMemo(
     () =>
       events
-        .filter((e) => new Date(e.date_start).getTime() > now)
+        .filter((e) => new Date(e.date_event).getTime() > now)
         .sort(
           (a, b) =>
-            new Date(a.date_start).getTime() - new Date(b.date_start).getTime(),
+            new Date(a.date_event).getTime() - new Date(b.date_event).getTime(),
         ),
     [events, now],
   )
@@ -220,10 +221,10 @@ export default function EvenementsPage() {
   }, [futureEvents])
 
   const featuredIsFuture = featuredEvent
-    ? new Date(featuredEvent.date_start).getTime() > now
+    ? new Date(featuredEvent.date_event).getTime() > now
     : false
 
-  const countdown = useCountdown(featuredIsFuture ? featuredEvent!.date_start : null)
+  const countdown = useCountdown(featuredIsFuture ? featuredEvent!.date_event : null)
 
   const featuredFlyers = useMemo(
     () => featuredEvent?.flyers?.filter(Boolean) ?? [],
@@ -285,7 +286,7 @@ export default function EvenementsPage() {
                 >
                   <Image
                     src={featuredFlyers[flyerIndex]}
-                    alt={featuredEvent.title}
+                    alt={featuredEvent.titre}
                     fill
                     className="object-cover"
                     sizes="100vw"
@@ -334,7 +335,7 @@ export default function EvenementsPage() {
               </p>
 
               <h1 className="font-serif text-5xl leading-none text-tc-cream sm:text-7xl">
-                {featuredEvent.title}
+                {featuredEvent.titre}
               </h1>
 
               {featuredEvent.description ? (
@@ -342,7 +343,7 @@ export default function EvenementsPage() {
               ) : null}
 
               <p className="text-sm tracking-wider text-tc-gold">
-                {formatFeaturedDate(featuredEvent.date_start, locale)}
+                {formatFeaturedDate(featuredEvent.date_event, locale)}
               </p>
 
               {featuredIsFuture ? (
@@ -407,7 +408,7 @@ export default function EvenementsPage() {
 
                   <div className="space-y-3">
                     {monthEvents.map((event, i) => {
-                      const isPast = new Date(event.date_start).getTime() < now
+                      const isPast = new Date(event.date_event).getTime() < now
                       const typeStyle = getTypeStyle(event.type)
                       const flyer = event.flyers?.[0]
                       const extraFlyers = (event.flyers?.length ?? 0) - 1
@@ -439,7 +440,7 @@ export default function EvenementsPage() {
                             <div className="relative h-24 w-24 shrink-0 overflow-hidden rounded-xl sm:h-32 sm:w-32">
                               <Image
                                 src={flyer}
-                                alt={event.title}
+                                alt={event.titre}
                                 fill
                                 className="object-cover"
                                 sizes="(max-width: 640px) 96px, 128px"
@@ -487,7 +488,7 @@ export default function EvenementsPage() {
                             </div>
 
                             <h3 className="mt-2 text-sm font-medium text-tc-cream sm:text-base">
-                              {event.title}
+                              {event.titre}
                             </h3>
 
                             {event.description ? (
@@ -497,7 +498,7 @@ export default function EvenementsPage() {
                             ) : null}
 
                             <p className="mt-2 text-xs text-white/30">
-                              {formatCardDate(event.date_start, locale)}
+                              {formatCardDate(event.date_event, locale)}
                             </p>
 
                             {event.places_total != null && event.places_total > 0 ? (
