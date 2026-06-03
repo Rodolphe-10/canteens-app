@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { Phone, MapPin } from 'lucide-react'
+import { Phone, MapPin, Navigation } from 'lucide-react'
 
 const InstagramIcon = () => (
   <svg viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
@@ -27,8 +27,10 @@ const WhatsAppIcon = () => (
   </svg>
 )
 
-const MAPS_URL =
-  'https://www.google.com/maps/search/?api=1&query=Dragage+Club+Camtel+Yaounde+Cameroun'
+// Coordonnées GPS exactes de The Canteen's — Rue Charles Bindzi, Dragage, Yaoundé
+const LAT = 3.89780
+const LNG = 11.52002
+const MAPS_URL = `https://www.google.com/maps?q=${LAT},${LNG}`
 
 const socialLinks = [
   {
@@ -92,9 +94,10 @@ export default function Footer({ locale }: { locale: string }) {
                   href={MAPS_URL}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="mt-2 inline-block text-[11px] text-tc-cream/35 underline-offset-2 transition-colors hover:text-tc-gold/60 hover:underline"
+                  className="mt-3 inline-flex items-center gap-1.5 rounded-full border border-tc-gold/30 bg-tc-gold/10 px-3 py-1.5 text-[11px] font-medium tracking-wide text-tc-gold transition-all hover:bg-tc-gold/20 hover:border-tc-gold/50"
                 >
-                  {locale === 'fr' ? 'Voir la localisation' : 'View location'}
+                  <Navigation size={11} />
+                  {locale === 'fr' ? 'Itinéraire' : 'Get directions'}
                 </a>
               </div>
             </div>
