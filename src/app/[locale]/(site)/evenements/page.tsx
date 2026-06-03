@@ -389,33 +389,58 @@ export default function EvenementsPage() {
               {isFr ? 'Chargement…' : 'Loading…'}
             </p>
           ) : (() => {
+            // Expand events into one entry per flyer
+            type FlyerCard = { event: Event; flyerUrl: string; flyerIndex: number }
+            const expandFlyers = (evList: Event[]): FlyerCard[] =>
+              evList.flatMap((ev) =>
+                (ev.flyers ?? []).length > 0
+                  ? (ev.flyers ?? []).map((url, fi) => ({ event: ev, flyerUrl: url, flyerIndex: fi }))
+                  : [{ event: ev, flyerUrl: '', flyerIndex: 0 }]
+              )
+
             const upcomingNonFeatured = events.filter(
               (e) => new Date(e.date_event).getTime() > now && e.id !== featuredEvent?.id
             )
+            // Also include featured event's extra flyers as cards
+            const featuredExtraFlyers: FlyerCard[] = featuredEvent
+              ? (featuredEvent.flyers ?? []).map((url, fi) => ({
+                  event: featuredEvent,
+                  flyerUrl: url,
+                  flyerIndex: fi,
+                }))
+              : []
+
+            const upcomingCards = [
+              ...featuredExtraFlyers,
+              ...expandFlyers(upcomingNonFeatured),
+            ]
+
             const pastEvents = events.filter(
               (e) => new Date(e.date_event).getTime() <= now
             )
-            const pastByMonth = pastEvents.reduce<Record<string, Event[]>>((acc, ev) => {
+            const pastCards = expandFlyers(pastEvents)
+
+            const pastByMonth = pastCards.reduce<Record<string, FlyerCard[]>>((acc, fc) => {
               const key = capitalize(
-                new Date(ev.date_event).toLocaleDateString(
+                new Date(fc.event.date_event).toLocaleDateString(
                   locale === 'fr' ? 'fr-FR' : 'en-US',
                   { month: 'long', year: 'numeric' }
                 )
               )
               if (!acc[key]) acc[key] = []
-              acc[key].push(ev)
+              acc[key].push(fc)
               return acc
             }, {})
             const pastMonths = Object.entries(pastByMonth).sort(
               ([, a], [, b]) =>
-                new Date(b[0]?.date_event ?? 0).getTime() -
-                new Date(a[0]?.date_event ?? 0).getTime()
+                new Date(b[0]?.event.date_event ?? 0).getTime() -
+                new Date(a[0]?.event.date_event ?? 0).getTime()
             )
 
             return (
               <div>
-                {/* Prochains événements (hors à la une) */}
-                {upcomingNonFeatured.length > 0 && (
+                {/* Prochains événements — tous les flyers de l'anniversaire */}
+                {upcomingCards.length > 0 && (
                   <div className="mb-16">
                     <div className="flex items-center gap-4 mb-8">
                       <div className="h-px flex-1 bg-tc-gold/20" />
@@ -425,11 +450,13 @@ export default function EvenementsPage() {
                       <div className="h-px flex-1 bg-tc-gold/20" />
                     </div>
                     <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
-                      {upcomingNonFeatured.map((event, i) => (
-                        <EventCard
-                          key={event.id}
-                          event={event}
-                          index={i}
+                      {upcomingCards.map((fc, i) => (
+                        <FlyerCardComponent
+                          key={`${fc.event.id}-${fc.flyerIndex}`}
+                          event={fc.event}
+                          flyerUrl={fc.flyerUrl}
+                          flyerIndex={fc.flyerIndex}
+                          cardIndex={i}
                           locale={locale}
                           isFr={isFr}
                           isPast={false}
@@ -452,26 +479,25 @@ export default function EvenementsPage() {
                       <div className="h-px flex-1 bg-white/10" />
                     </div>
 
-                    {pastMonths.map(([monthLabel, monthEvents]) => (
+                    {pastMonths.map(([monthLabel, flyerCards]) => (
                       <div key={monthLabel} className="mb-12">
-                        {/* Header mois */}
                         <div className="flex items-center gap-3 mb-6">
                           <span className="text-[10px] uppercase tracking-[0.35em] text-white/20">
                             {monthLabel}
                           </span>
                           <div className="h-px flex-1 bg-white/5" />
                           <span className="text-[10px] text-white/20">
-                            {monthEvents.length} {monthEvents.length > 1 ? (isFr ? 'événements' : 'events') : (isFr ? 'événement' : 'event')}
+                            {flyerCards.length} flyer{flyerCards.length > 1 ? 's' : ''}
                           </span>
                         </div>
-
-                        {/* Grille de cartes */}
                         <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
-                          {monthEvents.map((event, i) => (
-                            <EventCard
-                              key={event.id}
-                              event={event}
-                              index={i}
+                          {flyerCards.map((fc, i) => (
+                            <FlyerCardComponent
+                              key={`${fc.event.id}-${fc.flyerIndex}`}
+                              event={fc.event}
+                              flyerUrl={fc.flyerUrl}
+                              flyerIndex={fc.flyerIndex}
+                              cardIndex={i}
                               locale={locale}
                               isFr={isFr}
                               isPast={true}
@@ -531,100 +557,92 @@ export default function EvenementsPage() {
   )
 }
 
-// ─── Composant carte événement ────────────────────────────────────────────────
-function EventCard({
+// ─── Composant carte flyer ─────────────────────────────────────────────────────
+function FlyerCardComponent({
   event,
-  index,
+  flyerUrl,
+  flyerIndex,
+  cardIndex,
   locale,
   isFr,
   isPast,
   onFlyerClick,
 }: {
   event: Event
-  index: number
+  flyerUrl: string
+  flyerIndex: number
+  cardIndex: number
   locale: string
   isFr: boolean
   isPast: boolean
   onFlyerClick: (src: string) => void
 }) {
   const typeStyle = getTypeStyle(event.type)
-  const flyer = event.flyers?.[0]
+  const showBadge = flyerIndex === 0 // badge uniquement sur le 1er flyer de chaque event
 
   return (
     <motion.article
       initial={{ opacity: 0, y: 16 }}
       whileInView={{ opacity: isPast ? 0.75 : 1, y: 0 }}
       viewport={{ once: true, margin: '-30px' }}
-      transition={{ duration: 0.35, delay: index * 0.06 }}
+      transition={{ duration: 0.35, delay: cardIndex * 0.05 }}
       className="flex flex-col overflow-hidden rounded-2xl border border-white/5 bg-white/[0.03] transition hover:border-white/10"
     >
       {/* Image flyer */}
       <div className="relative w-full overflow-hidden" style={{ aspectRatio: '3/4' }}>
-        {flyer ? (
-          <button
-            type="button"
-            onClick={() => onFlyerClick(flyer)}
-            className="absolute inset-0 z-10 cursor-zoom-in"
-            aria-label={isFr ? 'Agrandir le flyer' : 'Enlarge flyer'}
-          >
-            <span className="sr-only">{event.titre}</span>
-          </button>
-        ) : null}
-        {flyer ? (
-          <Image
-            src={flyer}
-            alt={event.titre}
-            fill
-            className="object-cover transition-transform duration-500 hover:scale-105"
-            sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
-          />
+        {flyerUrl ? (
+          <>
+            <button
+              type="button"
+              onClick={() => onFlyerClick(flyerUrl)}
+              className="absolute inset-0 z-10 cursor-zoom-in"
+              aria-label={isFr ? 'Agrandir le flyer' : 'Enlarge flyer'}
+            />
+            <Image
+              src={flyerUrl}
+              alt={event.titre}
+              fill
+              className="object-cover transition-transform duration-500 hover:scale-105"
+              sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
+            />
+          </>
         ) : (
-          <div
-            className={cn(
-              'flex h-full w-full items-center justify-center font-serif text-4xl text-white/20',
-              typeStyle.placeholder,
-            )}
-          >
+          <div className={cn('flex h-full w-full items-center justify-center font-serif text-4xl text-white/20', typeStyle.placeholder)}>
             {typeStyle.initial}
           </div>
         )}
-        {/* Badge type */}
-        <span
-          className={cn(
+        {/* Badge type — seulement sur le 1er flyer */}
+        {showBadge && (
+          <span className={cn(
             'absolute left-2 top-2 z-20 rounded-full border px-2 py-0.5 text-[9px] uppercase tracking-wider backdrop-blur-sm',
-            isPast
-              ? 'border-white/10 bg-black/50 text-white/40'
-              : typeStyle.pill,
-          )}
-        >
-          {isPast ? (isFr ? 'Terminé' : 'Ended') : (isFr ? typeStyle.labelFr : typeStyle.labelEn)}
-        </span>
+            isPast ? 'border-white/10 bg-black/50 text-white/40' : typeStyle.pill,
+          )}>
+            {isPast ? (isFr ? 'Terminé' : 'Ended') : (isFr ? typeStyle.labelFr : typeStyle.labelEn)}
+          </span>
+        )}
       </div>
 
-      {/* Infos */}
-      <div className="flex flex-1 flex-col gap-1.5 p-3">
-        <h3 className="line-clamp-2 text-xs font-medium leading-snug text-tc-cream sm:text-sm">
-          {event.titre}
-        </h3>
-        {event.description && (
-          <p className="line-clamp-2 text-[10px] leading-relaxed text-white/35">
-            {event.description}
-          </p>
-        )}
-        <p className="mt-auto pt-2 text-[10px] text-white/25">
-          {capitalize(
-            new Date(event.date_event).toLocaleDateString(
-              locale === 'fr' ? 'fr-FR' : 'en-US',
-              { day: 'numeric', month: 'short', year: 'numeric' }
-            )
+      {/* Infos — uniquement sur le 1er flyer de l'event */}
+      {flyerIndex === 0 && (
+        <div className="flex flex-1 flex-col gap-1.5 p-3">
+          <h3 className="line-clamp-2 text-xs font-medium leading-snug text-tc-cream sm:text-sm">
+            {event.titre}
+          </h3>
+          {event.description && (
+            <p className="line-clamp-2 text-[10px] leading-relaxed text-white/35">
+              {event.description}
+            </p>
           )}
-        </p>
-        {event.flyers && event.flyers.length > 1 && (
-          <p className="text-[9px] text-white/20">
-            + {event.flyers.length - 1} flyer{event.flyers.length > 2 ? 's' : ''}
+          <p className="mt-auto pt-2 text-[10px] text-white/25">
+            {capitalize(
+              new Date(event.date_event).toLocaleDateString(
+                locale === 'fr' ? 'fr-FR' : 'en-US',
+                { day: 'numeric', month: 'short', year: 'numeric' }
+              )
+            )}
           </p>
-        )}
-      </div>
+        </div>
+      )}
     </motion.article>
   )
 }
