@@ -65,7 +65,7 @@ export default function MenuCard({
     <>
       <motion.div
         whileHover={{ y: -2 }}
-        className="group flex flex-col overflow-hidden border border-white/5 bg-white/[0.03] backdrop-blur-sm transition-all duration-300 hover:border-tc-gold/30"
+        className="group flex h-full min-w-0 flex-col overflow-hidden border border-white/5 bg-white/[0.03] backdrop-blur-sm transition-all duration-300 hover:border-tc-gold/30"
       >
         <div className={menuCardImageFrameClass}>
           <div className={menuCardImageSquareClass}>
@@ -100,41 +100,49 @@ export default function MenuCard({
               )}
 
               {item.isPopular && (
-                <span className="absolute right-3 top-3 z-10 flex items-center gap-1 rounded-full border border-tc-gold/30 bg-black/60 px-2 py-0.5 text-[10px] text-tc-gold backdrop-blur-sm">
+                <span className="absolute right-1.5 top-1.5 z-10 flex items-center gap-0.5 rounded-full border border-tc-gold/30 bg-black/60 px-1.5 py-0.5 text-[9px] text-tc-gold backdrop-blur-sm sm:right-3 sm:top-3 sm:gap-1 sm:px-2 sm:text-[10px]">
                   <Star size={8} fill="currentColor" />
-                  {locale === 'fr' ? 'Populaire' : 'Popular'}
+                  <span className="hidden sm:inline">
+                    {locale === 'fr' ? 'Populaire' : 'Popular'}
+                  </span>
                 </span>
               )}
             </div>
           </div>
         </div>
 
-        <div className="flex flex-1 flex-col gap-3 p-5">
-          <div className="flex-1">
-            <h3 className="text-sm font-medium leading-snug text-tc-cream">{name}</h3>
+        <div className="flex min-w-0 flex-1 flex-col gap-2 p-3 sm:gap-3 sm:p-4">
+          <div className="min-w-0 flex-1">
+            <h3 className="line-clamp-2 text-xs font-medium leading-snug text-tc-cream sm:text-sm">
+              {name}
+            </h3>
             {description && (
-              <p className="mt-1.5 line-clamp-2 text-xs leading-relaxed text-tc-cream/40">
+              <p className="mt-1 line-clamp-2 text-[11px] leading-relaxed text-tc-cream/40 sm:mt-1.5 sm:text-xs">
                 {description}
               </p>
             )}
           </div>
 
-          <div className="mt-auto flex items-center justify-between border-t border-white/5 pt-2">
-            <span className="font-serif text-lg text-tc-gold">{formatPrice(item.price)}</span>
+          <div className="mt-auto flex flex-col gap-2 border-t border-white/5 pt-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
+            <span className="min-w-0 shrink-0 font-serif text-sm leading-none text-tc-gold sm:text-lg">
+              {formatPrice(item.price)}
+            </span>
             <motion.button
               type="button"
               onClick={handleAdd}
               animate={justAdded ? { scale: [1, 1.12, 1] } : { scale: 1 }}
               transition={{ duration: 0.35, ease: 'easeOut' }}
               className={cn(
-                'flex items-center gap-1.5 border px-3 py-1.5 text-xs font-bold uppercase tracking-wider transition-colors duration-200',
+                'flex w-full shrink-0 items-center justify-center gap-1 border px-2 py-1.5 text-[10px] font-bold uppercase tracking-wide transition-colors duration-200 sm:w-auto sm:gap-1.5 sm:px-3 sm:text-xs sm:tracking-wider',
                 justAdded
                   ? 'border-tc-gold bg-tc-gold text-tc-black shadow-[0_0_12px_rgba(212,175,55,0.45)]'
                   : 'border-tc-gold/30 bg-tc-gold/10 text-tc-gold hover:border-tc-gold hover:bg-tc-gold hover:text-tc-black',
               )}
             >
-              <Plus size={12} />
-              {locale === 'fr' ? 'Ajouter' : 'Add'}
+              <Plus size={12} className="shrink-0" />
+              <span className="whitespace-nowrap">
+                {locale === 'fr' ? 'Ajouter' : 'Add'}
+              </span>
             </motion.button>
           </div>
         </div>

@@ -103,11 +103,12 @@ export default function MenuSection({ locale }: { locale: string }) {
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.3 }}
-            className="grid grid-cols-2 gap-3 sm:grid-cols-2 lg:grid-cols-3"
+            className="grid grid-cols-2 gap-2.5 sm:gap-3 sm:grid-cols-2 lg:grid-cols-3"
           >
             {filteredItems.map((item, i) => (
               <motion.div
                 key={item.id}
+                className="min-w-0"
                 initial={{ opacity: 0, y: 15 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.3, delay: i * 0.04 }}

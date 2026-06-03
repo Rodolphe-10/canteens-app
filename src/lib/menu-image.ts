@@ -8,6 +8,6 @@ export const MENU_CARD_IMAGE_HEIGHT = 800
 export const menuCardImageFrameClass =
   'relative w-full shrink-0 overflow-hidden bg-black/20'
 
-export const menuCardImageSquareClass = 'relative h-0 w-full pb-[75%]'
+export const menuCardImageSquareClass = 'relative aspect-[4/3] w-full'
 
 export const menuCardImageInnerClass = 'absolute inset-0'
