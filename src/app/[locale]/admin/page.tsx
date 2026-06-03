@@ -7,10 +7,38 @@ import { useMenuImageOverrides } from '@/hooks/useMenuImageOverrides'
 import { cn } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
 
-const ADMIN_PIN = '2024'
-const ACCESS_KEY = 'tc_staff_auth'
+const ROLES = {
+  admin: { pin: '2024', label: 'Administrateur', color: 'text-tc-gold' },
+  chef: { pin: '5678', label: 'Chef de Salle', color: 'text-blue-400' },
+  cm: { pin: '1919', label: 'Community Manager', color: 'text-purple-400' },
+} as const
 
-type Tab = 'reservations' | 'orders' | 'images'
+type Role = keyof typeof ROLES
+const ACCESS_KEY = 'tc_staff_auth_role'
+
+type Tab = 'reservations' | 'orders' | 'events' | 'images'
+
+const TAB_LABELS: Record<Tab, string> = {
+  reservations: 'Réservations',
+  orders: 'Commandes',
+  events: 'Événements',
+  images: 'Images Menu',
+}
+
+const AVAILABLE_TABS: Record<Role, Tab[]> = {
+  admin: ['reservations', 'orders', 'events', 'images'],
+  chef: ['reservations', 'orders'],
+  cm: ['events'],
+}
+
+function getInitialTab(r: Role): Tab {
+  if (r === 'cm') return 'events'
+  return 'reservations'
+}
+
+function isRole(value: string | null): value is Role {
+  return value === 'admin' || value === 'chef' || value === 'cm'
+}
 type ReservationStatus = 'nouveau' | 'confirme' | 'annule'
 type OrderStatus =
   | 'en_attente'
@@ -41,6 +69,59 @@ type OrderRow = {
   quartier: string
   created_at: string
 }
+
+type EventType = 'showcase' | 'anniversaire' | 'brunch' | 'sport' | 'special'
+
+type EventRow = {
+  id: string
+  titre: string
+  description?: string
+  type: EventType
+  date_event: string
+  date_end?: string
+  deadline_reservation?: string
+  places_total?: number
+  places_reserved: number
+  flyers: string[]
+  is_featured: boolean
+  is_visible: boolean
+}
+
+type EventForm = Omit<EventRow, 'id' | 'places_reserved' | 'flyers'> & { flyers: File[] }
+
+const EVENT_TYPE_STYLES: Record<EventType, { pill: string; label: string }> = {
+  showcase: {
+    pill: 'border-purple-500/30 bg-purple-500/20 text-purple-300',
+    label: 'Showcase',
+  },
+  anniversaire: {
+    pill: 'border-tc-gold/30 bg-tc-gold/20 text-tc-gold',
+    label: 'Anniversaire',
+  },
+  brunch: {
+    pill: 'border-amber-500/30 bg-amber-500/20 text-amber-300',
+    label: 'Brunch',
+  },
+  sport: {
+    pill: 'border-blue-500/30 bg-blue-500/20 text-blue-300',
+    label: 'Sport',
+  },
+  special: {
+    pill: 'border-emerald-500/30 bg-emerald-500/20 text-emerald-300',
+    label: 'Spécial',
+  },
+}
+
+const EVENT_TYPE_OPTIONS: EventType[] = [
+  'showcase',
+  'anniversaire',
+  'brunch',
+  'sport',
+  'special',
+]
+
+const FORM_INPUT_CLASS =
+  'w-full rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm text-tc-cream outline-none focus:border-tc-gold/40'
 
 const KEYPAD_ROWS = [
   ['1', '2', '3'],
@@ -86,6 +167,58 @@ function formatClock(date: Date) {
     minute: '2-digit',
     second: '2-digit',
   })
+}
+
+function toDatetimeLocal(iso?: string) {
+  if (!iso) return ''
+  const d = new Date(iso)
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
+}
+
+function formatEventAdminDate(iso: string) {
+  const d = new Date(iso)
+  return d.toLocaleDateString('fr-FR', {
+    weekday: 'short',
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  })
+}
+
+function ToggleSwitch({
+  checked,
+  onChange,
+  label,
+}: {
+  checked: boolean
+  onChange: (value: boolean) => void
+  label: string
+}) {
+  return (
+    <label className="flex cursor-pointer items-center gap-2">
+      <button
+        type="button"
+        role="switch"
+        aria-checked={checked}
+        onClick={() => onChange(!checked)}
+        className={cn(
+          'relative h-4 w-8 rounded-full transition-colors',
+          checked ? 'bg-tc-gold' : 'bg-white/10',
+        )}
+      >
+        <span
+          className={cn(
+            'absolute left-0.5 top-0.5 h-3 w-3 rounded-full bg-white transition-transform',
+            checked && 'translate-x-4',
+          )}
+        />
+      </button>
+      <span className="text-xs text-white/50">{label}</span>
+    </label>
+  )
 }
 
 function PinDots({
@@ -158,6 +291,7 @@ function OrderStatusProgress({ current }: { current: OrderStatus }) {
 }
 
 export default function AdminDashboardPage() {
+  const [role, setRole] = useState<Role | null>(null)
   const [isAuthed, setIsAuthed] = useState(false)
   const [pin, setPin] = useState('')
   const [pinError, setPinError] = useState(false)
@@ -176,7 +310,28 @@ export default function AdminDashboardPage() {
   const [uploadToast, setUploadToast] = useState(false)
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const [events, setEvents] = useState<EventRow[]>([])
+  const [loadingEvents, setLoadingEvents] = useState(true)
+  const [eventModal, setEventModal] = useState<'create' | 'edit' | null>(null)
+  const [editingEvent, setEditingEvent] = useState<EventRow | null>(null)
+  const [eventForm, setEventForm] = useState<Partial<EventForm>>({})
+  const [pendingExistingFlyers, setPendingExistingFlyers] = useState<string[]>([])
+  const [savingEvent, setSavingEvent] = useState(false)
+  const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [flyerFiles, setFlyerFiles] = useState<File[]>([])
+  const flyerInputRef = useRef<HTMLInputElement>(null)
   const supabase = useMemo(() => createClient(), [])
+
+  const newFlyerPreviews = useMemo(
+    () => flyerFiles.map((f) => URL.createObjectURL(f)),
+    [flyerFiles],
+  )
+
+  useEffect(() => {
+    return () => {
+      newFlyerPreviews.forEach((url) => URL.revokeObjectURL(url))
+    }
+  }, [newFlyerPreviews])
 
   const filteredMenuItems = useMemo(() => {
     const q = search.trim().toLowerCase()
@@ -184,9 +339,25 @@ export default function AdminDashboardPage() {
     return olaMenuItems.filter((item) => item.nameFr.toLowerCase().includes(q))
   }, [search])
 
+  const availableTabs = useMemo(
+    () => AVAILABLE_TABS[role ?? 'cm'],
+    [role],
+  )
+
   useEffect(() => {
-    if (sessionStorage.getItem(ACCESS_KEY) === '1') setIsAuthed(true)
+    const stored = sessionStorage.getItem(ACCESS_KEY)
+    if (isRole(stored)) {
+      setRole(stored)
+      setIsAuthed(true)
+      setTab(getInitialTab(stored))
+    }
   }, [])
+
+  useEffect(() => {
+    if (!availableTabs.includes(tab)) {
+      setTab(availableTabs[0] ?? 'events')
+    }
+  }, [availableTabs, tab])
 
   useEffect(() => {
     if (!isAuthed) return
@@ -217,7 +388,8 @@ export default function AdminDashboardPage() {
   }, [supabase])
 
   useEffect(() => {
-    if (!isAuthed) return
+    if (!isAuthed || !role) return
+    if (role !== 'admin' && role !== 'chef') return
 
     void fetchReservations()
     void fetchOrders()
@@ -244,25 +416,166 @@ export default function AdminDashboardPage() {
       void supabase.removeChannel(reservationChannel)
       void supabase.removeChannel(ordersChannel)
     }
-  }, [isAuthed, fetchReservations, fetchOrders, supabase])
+  }, [isAuthed, role, fetchReservations, fetchOrders, supabase])
 
-  const submitPin = useCallback(
-    (value: string) => {
-      if (value === ADMIN_PIN) {
-        sessionStorage.setItem(ACCESS_KEY, '1')
-        setIsAuthed(true)
-        setPin('')
-        setPinError(false)
-        return
-      }
-      setPinError(true)
-      window.setTimeout(() => {
-        setPin('')
-        setPinError(false)
-      }, 500)
+  const fetchEvents = useCallback(async () => {
+    setLoadingEvents(true)
+    const { data } = await supabase
+      .from('events')
+      .select('*')
+      .order('date_event', { ascending: false })
+    setEvents((data as EventRow[]) ?? [])
+    setLoadingEvents(false)
+  }, [supabase])
+
+  useEffect(() => {
+    if (tab === 'events' && isAuthed) void fetchEvents()
+  }, [tab, fetchEvents, isAuthed])
+
+  const uploadFlyer = useCallback(
+    async (file: File, eventId: string, index: number): Promise<string> => {
+      const ext = file.name.split('.').pop() ?? 'jpg'
+      const path = `events/event_${eventId}_${index}.${ext}`
+      await supabase.storage
+        .from('media')
+        .upload(path, file, { upsert: true, contentType: file.type })
+      const { data } = supabase.storage.from('media').getPublicUrl(path)
+      return data.publicUrl
     },
-    [],
+    [supabase],
   )
+
+  const closeEventModal = () => {
+    setEventModal(null)
+    setEditingEvent(null)
+    setEventForm({})
+    setPendingExistingFlyers([])
+    setFlyerFiles([])
+    if (flyerInputRef.current) flyerInputRef.current.value = ''
+  }
+
+  const openCreateEvent = () => {
+    setEditingEvent(null)
+    setPendingExistingFlyers([])
+    setEventForm({
+      is_visible: true,
+      is_featured: false,
+      type: 'special',
+    })
+    setFlyerFiles([])
+    setEventModal('create')
+  }
+
+  const openEditEvent = (event: EventRow) => {
+    setEditingEvent(event)
+    setPendingExistingFlyers(event.flyers ?? [])
+    setEventForm({
+      titre: event.titre,
+      description: event.description ?? '',
+      type: event.type,
+      date_event: event.date_event,
+      date_end: event.date_end,
+      deadline_reservation: event.deadline_reservation,
+      places_total: event.places_total,
+      is_featured: event.is_featured,
+      is_visible: event.is_visible,
+      flyers: [],
+    })
+    setFlyerFiles([])
+    setEventModal('edit')
+  }
+
+  const saveEvent = async () => {
+    if (!eventForm.titre?.trim() || !eventForm.date_event) return
+
+    setSavingEvent(true)
+    const isEdit = eventModal === 'edit' && editingEvent
+    const existingFlyers = isEdit ? pendingExistingFlyers : []
+    const newFlyerUrls: string[] = []
+    const tempId = isEdit ? editingEvent!.id : crypto.randomUUID()
+
+    try {
+      for (let i = 0; i < flyerFiles.length; i++) {
+        const url = await uploadFlyer(
+          flyerFiles[i],
+          tempId,
+          existingFlyers.length + i,
+        )
+        newFlyerUrls.push(url)
+      }
+
+      const allFlyers = [...existingFlyers, ...newFlyerUrls]
+
+      const payload = {
+        titre: eventForm.titre.trim(),
+        description: eventForm.description ?? '',
+        type: eventForm.type ?? 'special',
+        date_event: new Date(eventForm.date_event).toISOString(),
+        date_end: eventForm.date_end
+          ? new Date(eventForm.date_end).toISOString()
+          : null,
+        deadline_reservation: eventForm.deadline_reservation
+          ? new Date(eventForm.deadline_reservation).toISOString()
+          : null,
+        places_total: eventForm.places_total ?? null,
+        is_featured: eventForm.is_featured ?? false,
+        is_visible: eventForm.is_visible ?? true,
+        flyers: allFlyers,
+      }
+
+      if (isEdit) {
+        await supabase.from('events').update(payload).eq('id', editingEvent!.id)
+      } else {
+        await supabase.from('events').insert({ id: tempId, ...payload })
+      }
+
+      await fetchEvents()
+      closeEventModal()
+    } finally {
+      setSavingEvent(false)
+    }
+  }
+
+  const deleteEvent = async (id: string) => {
+    setDeletingId(id)
+    await supabase.from('events').delete().eq('id', id)
+    setEvents((prev) => prev.filter((e) => e.id !== id))
+    setDeletingId(null)
+  }
+
+  const toggleField = async (
+    id: string,
+    field: 'is_featured' | 'is_visible',
+    value: boolean,
+  ) => {
+    await supabase.from('events').update({ [field]: value }).eq('id', id)
+    setEvents((prev) =>
+      prev.map((e) => (e.id === id ? { ...e, [field]: value } : e)),
+    )
+  }
+
+  const submitPin = useCallback((value: string) => {
+    const matched = (
+      Object.entries(ROLES) as [Role, (typeof ROLES)[Role]][]
+    ).find(([, r]) => r.pin === value)
+
+    if (matched) {
+      const [matchedRole] = matched
+      sessionStorage.setItem(ACCESS_KEY, matchedRole)
+      setRole(matchedRole)
+      setIsAuthed(true)
+      setTab(getInitialTab(matchedRole))
+      setPin('')
+      setPinError(false)
+      return
+    }
+
+    setPinError(true)
+    window.setTimeout(() => {
+      setPin('')
+      setPinError(false)
+    }, 500)
+  }, [])
 
   useEffect(() => {
     if (pin.length === 4) submitPin(pin)
@@ -281,6 +594,7 @@ export default function AdminDashboardPage() {
   const handleLogout = () => {
     sessionStorage.removeItem(ACCESS_KEY)
     setIsAuthed(false)
+    setRole(null)
     setPin('')
     setPinError(false)
   }
@@ -346,8 +660,19 @@ export default function AdminDashboardPage() {
           THE CANTEEN&apos;S
         </p>
         <p className="mt-1 text-[10px] uppercase tracking-[0.6em] text-tc-gold/50">
-          STAFF ACCESS
+          STAFF LOGIN
         </p>
+
+        <div className="mt-3 flex flex-wrap justify-center gap-2">
+          {(Object.values(ROLES) as (typeof ROLES)[Role][]).map((r) => (
+            <span
+              key={r.label}
+              className="rounded-full border border-white/10 px-2.5 py-1 text-[9px] uppercase tracking-widest text-white/20"
+            >
+              {r.label}
+            </span>
+          ))}
+        </div>
 
         <PinDots length={pin.length} error={pinError} />
 
@@ -393,9 +718,16 @@ export default function AdminDashboardPage() {
   return (
     <div className="min-h-screen bg-[#0A0A0A] text-tc-cream">
       <header className="sticky top-0 z-30 flex h-14 items-center justify-between border-b border-white/[0.07] bg-[#0A0A0A] px-4">
-        <p className="text-xs tracking-widest text-white/50">
-          THE CANTEEN&apos;S · DASHBOARD
-        </p>
+        <div className="flex flex-col gap-0.5 sm:flex-row sm:items-center sm:gap-3">
+          <p className="text-xs tracking-widest text-white/50">
+            THE CANTEEN&apos;S · DASHBOARD
+          </p>
+          {role ? (
+            <span className={cn('text-xs font-medium', ROLES[role].color)}>
+              {ROLES[role].label}
+            </span>
+          ) : null}
+        </div>
         <div className="flex items-center gap-4">
           <span className="font-mono text-xs tabular-nums text-white/40">{clock}</span>
           <button
@@ -408,24 +740,18 @@ export default function AdminDashboardPage() {
         </div>
       </header>
 
-      <nav className="sticky top-14 z-20 flex gap-8 border-b border-white/[0.07] bg-[#0A0A0A] px-4">
-        {(
-          [
-            ['reservations', 'Réservations'],
-            ['orders', 'Commandes'],
-            ['images', 'Images'],
-          ] as const
-        ).map(([id, label]) => (
+      <nav className="sticky top-14 z-20 flex gap-8 overflow-x-auto border-b border-white/[0.07] bg-[#0A0A0A] px-4">
+        {availableTabs.map((id) => (
           <button
             key={id}
             type="button"
             onClick={() => setTab(id)}
             className={cn(
-              'relative py-3 text-sm tracking-wider transition-colors',
+              'relative shrink-0 py-3 text-sm tracking-wider transition-colors',
               tab === id ? 'text-tc-cream' : 'text-white/35 hover:text-white/55',
             )}
           >
-            {label}
+            {TAB_LABELS[id]}
             {tab === id && (
               <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-tc-gold" />
             )}
@@ -436,10 +762,115 @@ export default function AdminDashboardPage() {
       <div
         className={cn(
           'mx-auto space-y-4 px-4 py-6',
-          tab === 'images' ? 'max-w-5xl' : 'max-w-2xl',
+          tab === 'images' ? 'max-w-5xl' : 'max-w-3xl',
         )}
       >
-        {tab === 'reservations' ? (
+        {tab === 'events' ? (
+          <>
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <h2 className="font-medium text-tc-cream">Gestion des Événements</h2>
+              <button
+                type="button"
+                onClick={openCreateEvent}
+                className="rounded-full border border-tc-gold/40 px-4 py-2 text-xs text-tc-gold transition hover:bg-tc-gold/10"
+              >
+                + Créer un événement
+              </button>
+            </div>
+
+            {loadingEvents ? (
+              <p className="text-center text-sm text-white/30">Chargement…</p>
+            ) : events.length === 0 ? (
+              <p className="text-center text-sm text-white/30">Aucun événement.</p>
+            ) : (
+              <div className="grid grid-cols-1 gap-3">
+                {events.map((event) => {
+                  const typeStyle = EVENT_TYPE_STYLES[event.type] ?? EVENT_TYPE_STYLES.special
+                  return (
+                    <article
+                      key={event.id}
+                      className="rounded-2xl border border-white/5 bg-white/[0.03] p-4"
+                    >
+                      <div className="flex gap-3">
+                        {event.flyers?.[0] ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={event.flyers[0]}
+                            alt=""
+                            className="h-14 w-12 shrink-0 rounded-lg object-cover"
+                          />
+                        ) : (
+                          <div className="flex h-14 w-12 shrink-0 items-center justify-center rounded-lg bg-white/5 text-[10px] text-white/25">
+                            —
+                          </div>
+                        )}
+                        <div className="min-w-0 flex-1">
+                          <div className="flex flex-wrap items-start justify-between gap-2">
+                            <p className="text-sm font-medium text-tc-cream">{event.titre}</p>
+                            <span
+                              className={cn(
+                                'shrink-0 rounded-full border px-2 py-0.5 text-[10px] uppercase tracking-wider',
+                                typeStyle.pill,
+                              )}
+                            >
+                              {typeStyle.label}
+                            </span>
+                          </div>
+                          <p className="mt-1 text-xs text-white/40">
+                            {formatEventAdminDate(event.date_event)}
+                          </p>
+                          {event.description ? (
+                            <p className="mt-1 line-clamp-2 text-xs text-white/40">
+                              {event.description}
+                            </p>
+                          ) : null}
+                        </div>
+                      </div>
+
+                      <div className="mt-3 flex flex-wrap items-center gap-4 border-t border-white/5 pt-3">
+                        <ToggleSwitch
+                          checked={event.is_featured}
+                          onChange={(v) => void toggleField(event.id, 'is_featured', v)}
+                          label="En vedette ★"
+                        />
+                        <ToggleSwitch
+                          checked={event.is_visible}
+                          onChange={(v) => void toggleField(event.id, 'is_visible', v)}
+                          label="Visible"
+                        />
+                        <div className="ml-auto flex gap-3">
+                          <button
+                            type="button"
+                            onClick={() => openEditEvent(event)}
+                            className="text-xs text-tc-gold/80 transition hover:text-tc-gold"
+                          >
+                            Modifier
+                          </button>
+                          <button
+                            type="button"
+                            disabled={deletingId === event.id}
+                            onClick={() => {
+                              if (
+                                window.confirm(
+                                  `Supprimer « ${event.titre} » ? Cette action est irréversible.`,
+                                )
+                              ) {
+                                void deleteEvent(event.id)
+                              }
+                            }}
+                            className="text-xs text-red-400/60 transition hover:text-red-400 disabled:opacity-50"
+                          >
+                            Supprimer
+                          </button>
+                        </div>
+                      </div>
+                    </article>
+                  )
+                })}
+              </div>
+            )}
+          </>
+        ) : tab === 'reservations' ? (
           loadingReservations ? (
             <p className="text-center text-sm text-white/30">Chargement…</p>
           ) : reservations.length === 0 ? (
@@ -581,6 +1012,254 @@ export default function AdminDashboardPage() {
           </>
         )}
       </div>
+
+      {eventModal && (
+        <div
+          className="fixed inset-0 z-[200] flex items-center justify-center bg-black/85 p-4"
+          onClick={closeEventModal}
+        >
+          <div
+            className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl border border-white/10 bg-[#111] p-6"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="mb-5 font-medium text-tc-cream">
+              {eventModal === 'create'
+                ? 'Créer un événement'
+                : 'Modifier l\'événement'}
+            </h3>
+
+            <div className="space-y-4">
+              <div>
+                <label className="mb-1.5 block text-xs text-white/40">Titre *</label>
+                <input
+                  type="text"
+                  value={eventForm.titre ?? ''}
+                  onChange={(e) =>
+                    setEventForm((prev) => ({ ...prev, titre: e.target.value }))
+                  }
+                  className={FORM_INPUT_CLASS}
+                />
+              </div>
+
+              <div>
+                <label className="mb-1.5 block text-xs text-white/40">Description</label>
+                <textarea
+                  rows={3}
+                  value={eventForm.description ?? ''}
+                  onChange={(e) =>
+                    setEventForm((prev) => ({ ...prev, description: e.target.value }))
+                  }
+                  className={cn(FORM_INPUT_CLASS, 'resize-none')}
+                />
+              </div>
+
+              <div>
+                <label className="mb-1.5 block text-xs text-white/40">Type</label>
+                <select
+                  value={eventForm.type ?? 'special'}
+                  onChange={(e) =>
+                    setEventForm((prev) => ({
+                      ...prev,
+                      type: e.target.value as EventType,
+                    }))
+                  }
+                  className={FORM_INPUT_CLASS}
+                >
+                  {EVENT_TYPE_OPTIONS.map((t) => (
+                    <option key={t} value={t} className="bg-[#111]">
+                      {EVENT_TYPE_STYLES[t].label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="mb-1.5 block text-xs text-white/40">
+                  Date de l&apos;événement *
+                </label>
+                <input
+                  type="datetime-local"
+                  value={toDatetimeLocal(eventForm.date_event)}
+                  onChange={(e) =>
+                    setEventForm((prev) => ({
+                      ...prev,
+                      date_event: e.target.value
+                        ? new Date(e.target.value).toISOString()
+                        : '',
+                    }))
+                  }
+                  className={FORM_INPUT_CLASS}
+                />
+              </div>
+
+              <div>
+                <label className="mb-1.5 block text-xs text-white/40">Date de fin</label>
+                <input
+                  type="datetime-local"
+                  value={toDatetimeLocal(eventForm.date_end)}
+                  onChange={(e) =>
+                    setEventForm((prev) => ({
+                      ...prev,
+                      date_end: e.target.value
+                        ? new Date(e.target.value).toISOString()
+                        : undefined,
+                    }))
+                  }
+                  className={FORM_INPUT_CLASS}
+                />
+              </div>
+
+              <div>
+                <label className="mb-1.5 block text-xs text-white/40">
+                  Deadline réservation
+                </label>
+                <input
+                  type="datetime-local"
+                  value={toDatetimeLocal(eventForm.deadline_reservation)}
+                  onChange={(e) =>
+                    setEventForm((prev) => ({
+                      ...prev,
+                      deadline_reservation: e.target.value
+                        ? new Date(e.target.value).toISOString()
+                        : undefined,
+                    }))
+                  }
+                  className={FORM_INPUT_CLASS}
+                />
+              </div>
+
+              <div>
+                <label className="mb-1.5 block text-xs text-white/40">Nombre de places</label>
+                <input
+                  type="number"
+                  min={0}
+                  value={eventForm.places_total ?? ''}
+                  onChange={(e) =>
+                    setEventForm((prev) => ({
+                      ...prev,
+                      places_total: e.target.value
+                        ? Number(e.target.value)
+                        : undefined,
+                    }))
+                  }
+                  className={FORM_INPUT_CLASS}
+                />
+              </div>
+
+              <div className="flex flex-wrap gap-6">
+                <ToggleSwitch
+                  checked={eventForm.is_featured ?? false}
+                  onChange={(v) =>
+                    setEventForm((prev) => ({ ...prev, is_featured: v }))
+                  }
+                  label="Mettre en vedette"
+                />
+                <ToggleSwitch
+                  checked={eventForm.is_visible ?? true}
+                  onChange={(v) =>
+                    setEventForm((prev) => ({ ...prev, is_visible: v }))
+                  }
+                  label="Publié"
+                />
+              </div>
+
+              <div>
+                <p className="mb-2 text-xs text-white/40">Flyers</p>
+                {pendingExistingFlyers.length > 0 ? (
+                  <div className="mb-3 flex flex-wrap gap-2">
+                    {pendingExistingFlyers.map((url, idx) => (
+                      <div key={url} className="relative">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={url}
+                          alt=""
+                          className="h-20 w-16 rounded-lg object-cover"
+                        />
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setPendingExistingFlyers((prev) =>
+                              prev.filter((_, i) => i !== idx),
+                            )
+                          }
+                          className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-red-500/90 text-xs text-white"
+                        >
+                          ×
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                ) : null}
+
+                {newFlyerPreviews.length > 0 ? (
+                  <div className="mb-3 flex flex-wrap gap-2">
+                    {newFlyerPreviews.map((url, idx) => (
+                      <div key={url} className="relative">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={url}
+                          alt=""
+                          className="h-20 w-16 rounded-lg object-cover"
+                        />
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setFlyerFiles((prev) => prev.filter((_, i) => i !== idx))
+                          }
+                          className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-red-500/90 text-xs text-white"
+                        >
+                          ×
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                ) : null}
+
+                <input
+                  ref={flyerInputRef}
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  className="sr-only"
+                  onChange={(e) => {
+                    const files = Array.from(e.target.files ?? [])
+                    if (files.length) setFlyerFiles((prev) => [...prev, ...files])
+                    if (flyerInputRef.current) flyerInputRef.current.value = ''
+                  }}
+                />
+                <button
+                  type="button"
+                  onClick={() => flyerInputRef.current?.click()}
+                  className="rounded-full border border-white/15 px-4 py-2 text-xs text-white/50 transition hover:border-tc-gold/40 hover:text-tc-cream"
+                >
+                  Ajouter des flyers
+                </button>
+              </div>
+            </div>
+
+            <div className="mt-6 flex gap-2">
+              <button
+                type="button"
+                disabled={savingEvent}
+                onClick={closeEventModal}
+                className="flex-1 rounded-full border border-white/15 px-4 py-2 text-xs text-white/50 transition hover:text-tc-cream disabled:opacity-50"
+              >
+                Annuler
+              </button>
+              <button
+                type="button"
+                disabled={
+                  savingEvent || !eventForm.titre?.trim() || !eventForm.date_event
+                }
+                onClick={() => void saveEvent()}
+                className="flex-1 rounded-full bg-tc-gold px-4 py-2 text-xs font-bold uppercase tracking-wider text-tc-black transition hover:bg-tc-gold/90 disabled:opacity-50"
+              >
+                {savingEvent ? 'Enregistrement…' : 'Enregistrer'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {editItem && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4">
