@@ -27,6 +27,9 @@ const WhatsAppIcon = () => (
   </svg>
 )
 
+const MAPS_URL =
+  'https://www.google.com/maps/search/?api=1&query=Dragage+Club+Camtel+Yaounde+Cameroun'
+
 const socialLinks = [
   {
     label: 'Instagram',
@@ -79,11 +82,21 @@ export default function Footer({ locale }: { locale: string }) {
             </h4>
             <div className="flex items-start gap-2 text-sm text-tc-cream/60">
               <MapPin size={14} className="mt-0.5 shrink-0 text-tc-gold" />
-              <span>
-                Dragage, à côté du Club Camtel
-                <br />
-                Yaoundé, Cameroun
-              </span>
+              <div>
+                <span>
+                  Dragage, à côté du Club Camtel
+                  <br />
+                  Yaoundé, Cameroun
+                </span>
+                <a
+                  href={MAPS_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="mt-2 inline-block text-[11px] text-tc-cream/35 underline-offset-2 transition-colors hover:text-tc-gold/60 hover:underline"
+                >
+                  {locale === 'fr' ? 'Voir la localisation' : 'View location'}
+                </a>
+              </div>
             </div>
 
             <a

@@ -212,15 +212,15 @@ export default function Navbar({ locale }: { locale: string }) {
             })}
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex shrink-0 items-center gap-2 sm:gap-3">
             <button
               type="button"
               onClick={toggleCart}
-              className="relative inline-flex items-center gap-2 p-2 text-tc-cream/70 transition-colors hover:text-tc-gold"
+              className="relative inline-flex items-center gap-1.5 p-2 text-tc-cream/70 transition-colors hover:text-tc-gold sm:gap-2"
               aria-label={locale === 'fr' ? 'Ouvrir le panier' : 'Open cart'}
             >
-              <ShoppingBag size={20} />
-              <span className="text-[11px] uppercase tracking-widest">
+              <ShoppingBag size={20} className="shrink-0" />
+              <span className="hidden text-[11px] uppercase tracking-widest sm:inline">
                 {locale === 'fr' ? 'Panier' : 'Cart'}
               </span>
               {cartCount > 0 && (
@@ -231,7 +231,12 @@ export default function Navbar({ locale }: { locale: string }) {
             </button>
             <Link
               href={newPath}
-              className="hidden rounded border border-white/10 px-3 py-1.5 text-xs uppercase tracking-widest text-tc-cream/50 transition-colors hover:text-tc-gold lg:flex"
+              className="rounded-full border border-white/10 px-2 py-1 text-[10px] font-medium uppercase tracking-wider text-tc-cream/50 transition-colors hover:border-tc-gold/30 hover:text-tc-gold lg:rounded lg:px-3 lg:py-1.5 lg:text-xs lg:tracking-widest"
+              aria-label={
+                locale === 'fr'
+                  ? `Passer en ${otherLocale.toUpperCase()}`
+                  : `Switch to ${otherLocale.toUpperCase()}`
+              }
             >
               {otherLocale.toUpperCase()}
             </Link>
