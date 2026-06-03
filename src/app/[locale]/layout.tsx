@@ -1,8 +1,5 @@
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
-import Navbar from '@/components/layout/Navbar'
-import Footer from '@/components/layout/Footer'
-import CartHost from '@/components/restauration/CartHost'
 import { routing } from '@/i18n/routing'
 import { NextIntlClientProvider } from 'next-intl'
 import { getMessages, setRequestLocale } from 'next-intl/server'
@@ -38,12 +35,7 @@ export default async function LocaleLayout({
   return (
     <html lang={locale}>
       <body className="bg-tc-black text-tc-cream antialiased">
-        <NextIntlClientProvider messages={messages}>
-          <Navbar locale={locale} />
-          <CartHost locale={locale} />
-          <main>{children}</main>
-          <Footer locale={locale} />
-        </NextIntlClientProvider>
+        <NextIntlClientProvider messages={messages}>{children}</NextIntlClientProvider>
       </body>
     </html>
   )

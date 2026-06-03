@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { menuCategories } from '@/data/menu'
 import { olaMenuItems } from '@/data/menu-ola'
+import { useMenuImageOverrides } from '@/hooks/useMenuImageOverrides'
 import MenuCard from './MenuCard'
 
 const menuItems = olaMenuItems
@@ -21,6 +22,7 @@ export default function MenuSection({ locale }: { locale: string }) {
   const [activeCategory, setActiveCategory] = useState(getDefaultFoodCategory)
   const [activeType, setActiveType] = useState<'food' | 'drink'>('food')
   const [toast, setToast] = useState<{ id: number; text: string } | null>(null)
+  const imageOverrides = useMenuImageOverrides()
   const navRef = useRef<HTMLDivElement>(null)
 
   const filteredCategories = menuCategories.filter(
@@ -111,7 +113,7 @@ export default function MenuSection({ locale }: { locale: string }) {
                 transition={{ duration: 0.3, delay: i * 0.04 }}
               >
                 <MenuCard
-                  item={item}
+                  item={{ ...item, image: imageOverrides[item.id] ?? item.image }}
                   locale={locale}
                   onAdded={(label) =>
                     setToast({
