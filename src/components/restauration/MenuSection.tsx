@@ -23,12 +23,16 @@ export default function MenuSection({ locale }: { locale: string }) {
   const [toast, setToast] = useState<{ id: number; text: string } | null>(null)
   const navRef = useRef<HTMLDivElement>(null)
 
-  const filteredCategories = menuCategories.filter((c) => c.type === activeType)
+  const filteredCategories = menuCategories.filter(
+    (c) => c.type === activeType && menuItems.some((item) => item.category === c.id),
+  )
   const filteredItems = menuItems.filter((item) => item.category === activeCategory)
 
   const handleTypeChange = (type: 'food' | 'drink') => {
     setActiveType(type)
-    const firstCat = menuCategories.find((c) => c.type === type)
+    const firstCat = menuCategories.find(
+      (c) => c.type === type && menuItems.some((item) => item.category === c.id),
+    )
     if (firstCat) setActiveCategory(firstCat.id)
   }
 

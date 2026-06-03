@@ -1,6 +1,9 @@
 export type MenuCategory =
   | 'entrees'
   | 'salades'
+  | 'poke-bowl'
+  | 'finger-food'
+  | 'tartine'
   | 'viandes'
   | 'poissons'
   | 'burgers'
@@ -21,6 +24,10 @@ export type MenuCategory =
   | 'hookah'
   | 'shots'
   | 'sans-alcool'
+  | 'milshakes'
+  | 'liqueurs'
+  | 'single-malt'
+  | 'prosecco'
 
 export interface MenuItem {
   id: string
@@ -51,9 +58,13 @@ export const menuCategories: MenuCategoryDef[] = [
   { id: 'burgers', labelFr: 'Burgers', labelEn: 'Burgers', icon: '', type: 'food' },
   { id: 'pizzas', labelFr: 'Pizzas', labelEn: 'Pizzas', icon: '', type: 'food' },
   { id: 'pates', labelFr: 'Pâtes', labelEn: 'Pasta', icon: '', type: 'food' },
-  { id: 'plats-locaux', labelFr: 'Plats Locaux', labelEn: 'Local Dishes', icon: '', type: 'food' },
   { id: 'accompagnements', labelFr: 'Accompagnements', labelEn: 'Sides', icon: '', type: 'food' },
   { id: 'desserts', labelFr: 'Desserts', labelEn: 'Desserts', icon: '', type: 'food' },
+  { id: 'poke-bowl', labelFr: 'Poke Bowl', labelEn: 'Poke Bowl', icon: '', type: 'food' },
+  { id: 'finger-food', labelFr: 'Finger Food', labelEn: 'Finger Food', icon: '', type: 'food' },
+  { id: 'tartine', labelFr: 'Tartines', labelEn: 'Toasts', icon: '', type: 'food' },
+  { id: 'plats-locaux', labelFr: 'Plats Locaux', labelEn: 'Local Dishes', icon: '', type: 'food' },
+  { id: 'brunch', labelFr: 'Brunch', labelEn: 'Brunch', icon: '', type: 'food' },
   { id: 'cocktails', labelFr: 'Cocktails', labelEn: 'Cocktails', icon: '', type: 'drink' },
   { id: 'vins', labelFr: 'Vins', labelEn: 'Wines', icon: '', type: 'drink' },
   { id: 'whiskies', labelFr: 'Whiskies', labelEn: 'Whiskies', icon: '', type: 'drink' },
@@ -61,8 +72,11 @@ export const menuCategories: MenuCategoryDef[] = [
   { id: 'vodkas', labelFr: 'Vodkas', labelEn: 'Vodkas', icon: '', type: 'drink' },
   { id: 'bieres', labelFr: 'Bières', labelEn: 'Beers', icon: '', type: 'drink' },
   { id: 'softs', labelFr: 'Softs & Jus', labelEn: 'Softs & Juices', icon: '', type: 'drink' },
-  { id: 'brunch', labelFr: 'Brunch', labelEn: 'Brunch', icon: '', type: 'food' },
   { id: 'champagnes', labelFr: 'Champagnes', labelEn: 'Champagnes', icon: '', type: 'drink' },
+  { id: 'prosecco', labelFr: 'Prosecco', labelEn: 'Prosecco', icon: '', type: 'drink' },
+  { id: 'single-malt', labelFr: 'Single Malt', labelEn: 'Single Malt', icon: '', type: 'drink' },
+  { id: 'milshakes', labelFr: 'Milshakes', labelEn: 'Milkshakes', icon: '', type: 'drink' },
+  { id: 'liqueurs', labelFr: 'Liqueurs', labelEn: 'Liqueurs', icon: '', type: 'drink' },
   { id: 'hookah', labelFr: 'Chicha', labelEn: 'Hookah', icon: '', type: 'drink' },
   { id: 'shots', labelFr: 'Shots', labelEn: 'Shots', icon: '', type: 'drink' },
   { id: 'sans-alcool', labelFr: 'Sans Alcool', labelEn: 'Non-Alcoholic', icon: '', type: 'drink' },
