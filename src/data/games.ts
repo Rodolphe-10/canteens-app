@@ -14,6 +14,7 @@ export const games: Game[] = [
     name: 'Billard',
     description: 'Table de billard professionnelle',
     prices: [{ label: 'La partie', amount: 2500 }],
+    image: '/games/billard.jpg',
     category: 'sport',
   },
   {
@@ -24,6 +25,7 @@ export const games: Game[] = [
       { label: '3-6 min', amount: 1500 },
       { label: '7-9 min', amount: 3000 },
     ],
+    image: '/games/vr-power.jpg',
     category: 'vr',
     isHighlight: true,
   },
@@ -35,6 +37,7 @@ export const games: Game[] = [
       { label: '10 min', amount: 3000 },
       { label: '15 min', amount: 5000 },
     ],
+    image: '/games/vr-infinite-battle.jpg',
     category: 'vr',
     isHighlight: true,
   },
@@ -43,6 +46,7 @@ export const games: Game[] = [
     name: 'Boxer Game',
     description: 'Testez la puissance de votre coup de poing',
     prices: [{ label: '3 coups', amount: 1000 }],
+    image: '/games/boxer-darts.jpg',
     category: 'arcade',
   },
   {
@@ -50,6 +54,7 @@ export const games: Game[] = [
     name: 'Fléchettes',
     description: 'Jeu de fléchettes électronique Zone Dart',
     prices: [{ label: 'La partie', amount: 1000 }],
+    image: '/games/boxer-darts.jpg',
     category: 'arcade',
   },
   {
@@ -60,6 +65,7 @@ export const games: Game[] = [
       { label: '3 coups', amount: 1000 },
       { label: '7 coups', amount: 2000 },
     ],
+    image: '/games/energy-flipper.jpg',
     category: 'arcade',
   },
   {
@@ -67,6 +73,7 @@ export const games: Game[] = [
     name: 'Flipper Star Wars',
     description: 'Flipper collector Star Wars',
     prices: [{ label: '1 jeton', amount: 1000 }],
+    image: '/games/energy-flipper.jpg',
     category: 'arcade',
   },
   {
@@ -79,6 +86,7 @@ export const games: Game[] = [
       { label: '3 jetons', amount: 2500 },
       { label: '4 jetons', amount: 3500 },
     ],
+    image: '/games/big-buck-hunters.jpg',
     category: 'arcade',
   },
   {
@@ -86,6 +94,7 @@ export const games: Game[] = [
     name: 'Baby-foot',
     description: 'Tables de baby-foot compétition',
     prices: [{ label: 'La partie', amount: 1000 }],
+    image: '/games/babyfoot.jpg',
     category: 'sport',
   },
   {
@@ -93,6 +102,7 @@ export const games: Game[] = [
     name: 'Simulateur de Rallye',
     description: 'Simulateurs de course automobile',
     prices: [{ label: '10 min', amount: 2500 }],
+    image: '/games/simulateur.jpg',
     category: 'simulation',
     isHighlight: true,
   },

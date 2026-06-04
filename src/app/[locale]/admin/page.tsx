@@ -4,8 +4,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import Image from 'next/image'
 import { Lock } from 'lucide-react'
 import { menuCategories } from '@/data/menu'
-import { olaMenuItems } from '@/data/menu-ola'
-import { useMenuImageOverrides } from '@/hooks/useMenuImageOverrides'
 import { cn } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
 
@@ -18,18 +16,17 @@ const ROLES = {
 type Role = keyof typeof ROLES
 const ACCESS_KEY = 'tc_staff_auth_role'
 
-type Tab = 'reservations' | 'orders' | 'events' | 'images' | 'menu'
+type Tab = 'reservations' | 'orders' | 'events' | 'menu'
 
 const TAB_LABELS: Record<Tab, string> = {
   reservations: 'Réservations',
   orders: 'Commandes',
   events: 'Événements',
-  images: 'Images Menu',
   menu: 'Menu',
 }
 
 const AVAILABLE_TABS: Record<Role, Tab[]> = {
-  admin: ['reservations', 'orders', 'events', 'images', 'menu'],
+  admin: ['reservations', 'orders', 'events', 'menu'],
   chef: ['reservations', 'orders', 'menu'],
   cm: ['events'],
 }
@@ -318,13 +315,6 @@ export default function AdminDashboardPage() {
   const [orders, setOrders] = useState<OrderRow[]>([])
   const [updatingReservationId, setUpdatingReservationId] = useState<string | null>(null)
   const [updatingOrderId, setUpdatingOrderId] = useState<string | null>(null)
-  const imageOverrides = useMenuImageOverrides()
-  const [search, setSearch] = useState('')
-  const [editItem, setEditItem] = useState<(typeof olaMenuItems)[0] | null>(null)
-  const [uploading, setUploading] = useState(false)
-  const [uploadToast, setUploadToast] = useState(false)
-  const [selectedFile, setSelectedFile] = useState<File | null>(null)
-  const fileInputRef = useRef<HTMLInputElement>(null)
   const [events, setEvents] = useState<EventRow[]>([])
   const [loadingEvents, setLoadingEvents] = useState(true)
   const [eventModal, setEventModal] = useState<'create' | 'edit' | null>(null)
@@ -358,12 +348,6 @@ export default function AdminDashboardPage() {
       newFlyerPreviews.forEach((url) => URL.revokeObjectURL(url))
     }
   }, [newFlyerPreviews])
-
-  const filteredMenuItems = useMemo(() => {
-    const q = search.trim().toLowerCase()
-    if (!q) return olaMenuItems
-    return olaMenuItems.filter((item) => item.nameFr.toLowerCase().includes(q))
-  }, [search])
 
   const menuUniqueCategories = useMemo(
     () => [...new Set(menuItems.map((i) => i.category))].sort(),
@@ -549,9 +533,14 @@ export default function AdminDashboardPage() {
       }
 
       if (menuModal === 'edit' && editingItem) {
-        const { error } = await supabase.from('menu_items').update(payload).eq('id', editingItem.id)
-        if (error) {
-          alert(`Erreur mise à jour : ${error.message} (code: ${error.code})`)
+        const result = await supabase.from('menu_items').update(payload).eq('id', editingItem.id).select()
+        console.log('[Menu UPDATE]', JSON.stringify(result))
+        if (result.error) {
+          alert(`Erreur mise à jour : ${result.error.message} (code: ${result.error.code})`)
+          return
+        }
+        if (!result.data || result.data.length === 0) {
+          alert(`Aucune ligne modifiée — l'ID "${editingItem.id}" n'existe pas ou RLS bloque.`)
           return
         }
       } else {
@@ -562,9 +551,10 @@ export default function AdminDashboardPage() {
             .replace(/[^a-z0-9-]/g, '') +
           '-' +
           Date.now()
-        const { error } = await supabase.from('menu_items').insert({ id, ...payload })
-        if (error) {
-          alert(`Erreur création : ${error.message} (code: ${error.code})`)
+        const result = await supabase.from('menu_items').insert({ id, ...payload }).select()
+        console.log('[Menu INSERT]', JSON.stringify(result))
+        if (result.error) {
+          alert(`Erreur création : ${result.error.message} (code: ${result.error.code})`)
           return
         }
       }
@@ -782,39 +772,6 @@ export default function AdminDashboardPage() {
     await fetchOrders()
   }
 
-  const handleImageUpload = async () => {
-    if (!editItem || !selectedFile) return
-
-    const client = createClient()
-    setUploading(true)
-
-    const file = selectedFile
-    await client.storage
-      .from('media')
-      .upload(`menu/${editItem.id}.webp`, file, { upsert: true, contentType: file.type })
-
-    const { data: urlData } = client.storage
-      .from('media')
-      .getPublicUrl(`menu/${editItem.id}.webp`)
-
-    await client.from('menu_images').upsert(
-      { item_id: editItem.id, image_url: urlData.publicUrl },
-      { onConflict: 'item_id' },
-    )
-
-    setUploading(false)
-    setEditItem(null)
-    setSelectedFile(null)
-    if (fileInputRef.current) fileInputRef.current.value = ''
-    setUploadToast(true)
-    window.setTimeout(() => setUploadToast(false), 2500)
-  }
-
-  const closeEditModal = () => {
-    setEditItem(null)
-    setSelectedFile(null)
-    if (fileInputRef.current) fileInputRef.current.value = ''
-  }
 
   if (!isAuthed) {
     return (
@@ -924,8 +881,7 @@ export default function AdminDashboardPage() {
 
       <div
         className={cn(
-          'mx-auto space-y-4 px-4 py-6',
-          tab === 'images' ? 'max-w-5xl' : 'max-w-3xl',
+          'mx-auto space-y-4 px-4 py-6 max-w-3xl',
         )}
       >
         {tab === 'events' ? (
@@ -946,85 +902,114 @@ export default function AdminDashboardPage() {
             ) : events.length === 0 ? (
               <p className="text-center text-sm text-white/30">Aucun événement.</p>
             ) : (
-              <div className="grid grid-cols-1 gap-3">
+              <div className="flex flex-col gap-6">
                 {events.map((event) => {
                   const typeStyle = EVENT_TYPE_STYLES[event.type] ?? EVENT_TYPE_STYLES.special
+                  const allFlyers = event.flyers ?? []
                   return (
                     <article
                       key={event.id}
-                      className="rounded-2xl border border-white/5 bg-white/[0.03] p-4"
+                      className="overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03]"
                     >
-                      <div className="flex gap-3">
-                        {event.flyers?.[0] ? (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img
-                            src={event.flyers[0]}
-                            alt=""
-                            className="h-14 w-12 shrink-0 rounded-lg object-cover"
-                          />
-                        ) : (
-                          <div className="flex h-14 w-12 shrink-0 items-center justify-center rounded-lg bg-white/5 text-[10px] text-white/25">
-                            —
-                          </div>
-                        )}
-                        <div className="min-w-0 flex-1">
-                          <div className="flex flex-wrap items-start justify-between gap-2">
-                            <p className="text-sm font-medium text-tc-cream">{event.titre}</p>
+                      {/* Flyers — un par un, pleine largeur */}
+                      {allFlyers.length > 0 ? (
+                        <div className={cn('grid gap-px', allFlyers.length > 1 ? 'grid-cols-2' : 'grid-cols-1')}>
+                          {allFlyers.map((url, idx) => (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img
+                              key={idx}
+                              src={url}
+                              alt=""
+                              className="w-full object-cover"
+                              style={{ maxHeight: '340px' }}
+                            />
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="flex h-40 w-full items-center justify-center bg-white/[0.02] text-xs text-white/20">
+                          Aucun flyer
+                        </div>
+                      )}
+
+                      {/* Infos */}
+                      <div className="p-5">
+                        <div className="flex flex-wrap items-start justify-between gap-2">
+                          <h3 className="text-base font-medium text-tc-cream">{event.titre}</h3>
+                          <div className="flex items-center gap-2">
+                            {event.is_featured && (
+                              <span className="rounded-full bg-tc-gold/20 px-2 py-0.5 text-[10px] uppercase tracking-wider text-tc-gold">
+                                ★ Vedette
+                              </span>
+                            )}
+                            {!event.is_visible && (
+                              <span className="rounded-full bg-white/5 px-2 py-0.5 text-[10px] uppercase tracking-wider text-white/30">
+                                Masqué
+                              </span>
+                            )}
                             <span
                               className={cn(
-                                'shrink-0 rounded-full border px-2 py-0.5 text-[10px] uppercase tracking-wider',
+                                'rounded-full border px-2 py-0.5 text-[10px] uppercase tracking-wider',
                                 typeStyle.pill,
                               )}
                             >
                               {typeStyle.label}
                             </span>
                           </div>
-                          <p className="mt-1 text-xs text-white/40">
-                            {formatEventAdminDate(event.date_event)}
-                          </p>
-                          {event.description ? (
-                            <p className="mt-1 line-clamp-2 text-xs text-white/40">
-                              {event.description}
-                            </p>
-                          ) : null}
                         </div>
-                      </div>
 
-                      <div className="mt-3 flex flex-wrap items-center gap-4 border-t border-white/5 pt-3">
-                        <ToggleSwitch
-                          checked={event.is_featured}
-                          onChange={(v) => void toggleField(event.id, 'is_featured', v)}
-                          label="En vedette ★"
-                        />
-                        <ToggleSwitch
-                          checked={event.is_visible}
-                          onChange={(v) => void toggleField(event.id, 'is_visible', v)}
-                          label="Visible"
-                        />
-                        <div className="ml-auto flex gap-3">
-                          <button
-                            type="button"
-                            onClick={() => openEditEvent(event)}
-                            className="text-xs text-tc-gold/80 transition hover:text-tc-gold"
-                          >
-                            Modifier
-                          </button>
-                          <button
-                            type="button"
-                            disabled={deletingId === event.id}
-                            onClick={() => {
-                              if (
-                                window.confirm(
-                                  `Supprimer « ${event.titre} » ? Cette action est irréversible.`,
-                                )
-                              ) {
-                                void deleteEvent(event.id)
-                              }
-                            }}
-                            className="text-xs text-red-400/60 transition hover:text-red-400 disabled:opacity-50"
-                          >
-                            Supprimer
-                          </button>
+                        <p className="mt-2 text-xs text-white/50">
+                          📅 {formatEventAdminDate(event.date_event)}
+                          {event.date_end ? ` → ${formatEventAdminDate(event.date_end)}` : ''}
+                        </p>
+
+                        {event.places_total ? (
+                          <p className="mt-1 text-xs text-white/40">
+                            👥 {event.places_reserved} / {event.places_total} places
+                          </p>
+                        ) : null}
+
+                        {event.description ? (
+                          <p className="mt-3 text-sm leading-relaxed text-white/40">
+                            {event.description}
+                          </p>
+                        ) : null}
+
+                        <div className="mt-4 flex flex-wrap items-center gap-4 border-t border-white/5 pt-4">
+                          <ToggleSwitch
+                            checked={event.is_featured}
+                            onChange={(v) => void toggleField(event.id, 'is_featured', v)}
+                            label="En vedette ★"
+                          />
+                          <ToggleSwitch
+                            checked={event.is_visible}
+                            onChange={(v) => void toggleField(event.id, 'is_visible', v)}
+                            label="Visible"
+                          />
+                          <div className="ml-auto flex gap-3">
+                            <button
+                              type="button"
+                              onClick={() => openEditEvent(event)}
+                              className="rounded-full border border-tc-gold/30 px-3 py-1 text-xs text-tc-gold/80 transition hover:bg-tc-gold/10 hover:text-tc-gold"
+                            >
+                              Modifier
+                            </button>
+                            <button
+                              type="button"
+                              disabled={deletingId === event.id}
+                              onClick={() => {
+                                if (
+                                  window.confirm(
+                                    `Supprimer « ${event.titre} » ? Cette action est irréversible.`,
+                                  )
+                                ) {
+                                  void deleteEvent(event.id)
+                                }
+                              }}
+                              className="rounded-full border border-red-400/20 px-3 py-1 text-xs text-red-400/60 transition hover:bg-red-500/10 hover:text-red-400 disabled:opacity-50"
+                            >
+                              {deletingId === event.id ? '…' : 'Supprimer'}
+                            </button>
+                          </div>
                         </div>
                       </div>
                     </article>
@@ -1243,49 +1228,6 @@ export default function AdminDashboardPage() {
                 })}
               </div>
             )}
-          </>
-        ) : tab === 'images' ? (
-          <>
-            <input
-              type="search"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Rechercher un plat…"
-              className="w-full rounded-xl border border-white/10 bg-white/[0.03] px-4 py-2.5 text-sm text-tc-cream outline-none transition-colors placeholder:text-white/25 focus:border-tc-gold/40"
-            />
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-              {filteredMenuItems.map((item) => {
-                const imageSrc = imageOverrides[item.id] ?? item.image
-                return (
-                  <div key={item.id} className="relative">
-                    {imageSrc ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        src={imageSrc}
-                        alt={item.nameFr}
-                        className="h-32 w-full rounded-lg bg-white/5 object-cover"
-                      />
-                    ) : (
-                      <div className="flex h-32 w-full items-center justify-center rounded-lg bg-white/5 text-[10px] text-white/25">
-                        Pas d&apos;image
-                      </div>
-                    )}
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setEditItem(item)
-                        setSelectedFile(null)
-                        if (fileInputRef.current) fileInputRef.current.value = ''
-                      }}
-                      className="absolute right-1 top-1 rounded-full bg-black/60 px-2 py-1 text-[10px] text-white"
-                    >
-                      📷
-                    </button>
-                    <p className="mt-1 truncate text-xs text-tc-cream">{item.nameFr}</p>
-                  </div>
-                )
-              })}
-            </div>
           </>
         ) : null}
       </div>
@@ -1715,62 +1657,6 @@ export default function AdminDashboardPage() {
         </div>
       )}
 
-      {editItem && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4">
-          <div className="w-full max-w-sm rounded-2xl border border-white/10 bg-[#111] p-6">
-            <p className="mb-3 font-medium text-tc-cream">{editItem.nameFr}</p>
-            {(imageOverrides[editItem.id] ?? editItem.image) ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={imageOverrides[editItem.id] ?? editItem.image}
-                alt={editItem.nameFr}
-                className="mb-4 h-40 w-full rounded-lg object-cover"
-              />
-            ) : (
-              <div className="mb-4 flex h-40 w-full items-center justify-center rounded-lg bg-white/5 text-sm text-white/30">
-                Aucune image
-              </div>
-            )}
-            <label className="mb-4 flex cursor-pointer flex-col items-center justify-center rounded-lg border border-dashed border-white/20 bg-white/[0.03] px-4 py-6 text-sm text-white/50 transition hover:border-tc-gold/40 hover:text-tc-cream">
-              <span>Choisir une image</span>
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*"
-                className="sr-only"
-                onChange={(e) => setSelectedFile(e.target.files?.[0] ?? null)}
-              />
-            </label>
-            {selectedFile && (
-              <p className="mb-4 truncate text-xs text-tc-gold/70">{selectedFile.name}</p>
-            )}
-            <div className="flex gap-2">
-              <button
-                type="button"
-                disabled={uploading || !selectedFile}
-                onClick={() => void handleImageUpload()}
-                className="flex-1 rounded-full bg-tc-gold px-4 py-2 text-xs font-bold uppercase tracking-wider text-tc-black transition hover:bg-tc-gold/90 disabled:opacity-50"
-              >
-                {uploading ? 'Envoi…' : 'Uploader'}
-              </button>
-              <button
-                type="button"
-                disabled={uploading}
-                onClick={closeEditModal}
-                className="flex-1 rounded-full border border-white/15 px-4 py-2 text-xs text-white/50 transition hover:text-tc-cream disabled:opacity-50"
-              >
-                Annuler
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {uploadToast && (
-        <div className="fixed bottom-6 left-1/2 z-50 -translate-x-1/2 rounded-full border border-tc-gold/40 bg-tc-black px-5 py-2 text-sm text-tc-cream">
-          ✓ Image mise à jour
-        </div>
-      )}
     </div>
   )
 }
