@@ -523,12 +523,16 @@ export default function AdminDashboardPage() {
         const ext = menuImageFile.name.split('.').pop() ?? 'webp'
         // Chemin unique avec timestamp pour éviter le cache CDN Supabase
         const path = `menu/${editingItem?.id ?? 'new'}-${Date.now()}.${ext}`
-        await supabase.storage
+        const { error: storageError } = await supabase.storage
           .from('media')
           .upload(path, menuImageFile, {
             upsert: false,
             contentType: menuImageFile.type,
           })
+        if (storageError) {
+          alert(`Erreur upload image : ${storageError.message}`)
+          return
+        }
         const { data: u } = supabase.storage.from('media').getPublicUrl(path)
         imageUrl = u.publicUrl
       }
@@ -545,7 +549,11 @@ export default function AdminDashboardPage() {
       }
 
       if (menuModal === 'edit' && editingItem) {
-        await supabase.from('menu_items').update(payload).eq('id', editingItem.id)
+        const { error } = await supabase.from('menu_items').update(payload).eq('id', editingItem.id)
+        if (error) {
+          alert(`Erreur mise à jour : ${error.message} (code: ${error.code})`)
+          return
+        }
       } else {
         const id =
           (menuForm.name_fr ?? '')
@@ -554,7 +562,11 @@ export default function AdminDashboardPage() {
             .replace(/[^a-z0-9-]/g, '') +
           '-' +
           Date.now()
-        await supabase.from('menu_items').insert({ id, ...payload })
+        const { error } = await supabase.from('menu_items').insert({ id, ...payload })
+        if (error) {
+          alert(`Erreur création : ${error.message} (code: ${error.code})`)
+          return
+        }
       }
 
       await fetchMenuItems()
@@ -566,7 +578,8 @@ export default function AdminDashboardPage() {
 
   const deleteMenuItem = async (id: string) => {
     if (!window.confirm('Supprimer ce plat ?')) return
-    await supabase.from('menu_items').delete().eq('id', id)
+    const { error } = await supabase.from('menu_items').delete().eq('id', id)
+    if (error) { alert(`Erreur suppression : ${error.message}`); return }
     setMenuItems((prev) => prev.filter((i) => i.id !== id))
   }
 
@@ -575,7 +588,8 @@ export default function AdminDashboardPage() {
     field: 'is_visible' | 'is_popular',
     val: boolean,
   ) => {
-    await supabase.from('menu_items').update({ [field]: val }).eq('id', id)
+    const { error } = await supabase.from('menu_items').update({ [field]: val }).eq('id', id)
+    if (error) { alert(`Erreur toggle : ${error.message}`); return }
     setMenuItems((prev) =>
       prev.map((i) => (i.id === id ? { ...i, [field]: val } : i)),
     )
