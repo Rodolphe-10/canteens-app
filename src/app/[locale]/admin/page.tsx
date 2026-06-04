@@ -16,17 +16,18 @@ const ROLES = {
 type Role = keyof typeof ROLES
 const ACCESS_KEY = 'tc_staff_auth_role'
 
-type Tab = 'reservations' | 'orders' | 'events' | 'menu'
+type Tab = 'reservations' | 'orders' | 'events' | 'menu' | 'games'
 
 const TAB_LABELS: Record<Tab, string> = {
   reservations: 'Réservations',
   orders: 'Commandes',
   events: 'Événements',
   menu: 'Menu',
+  games: 'Jeux',
 }
 
 const AVAILABLE_TABS: Record<Role, Tab[]> = {
-  admin: ['reservations', 'orders', 'events', 'menu'],
+  admin: ['reservations', 'orders', 'events', 'menu', 'games'],
   chef: ['reservations', 'orders', 'menu'],
   cm: ['events'],
 }
@@ -80,6 +81,33 @@ type MenuItem = {
   image?: string
   is_popular: boolean
   is_visible: boolean
+}
+
+type DbGame = {
+  id: string
+  name: string
+  description?: string
+  prices: { label: string; amount: number }[]
+  image?: string
+  category: 'vr' | 'arcade' | 'sport' | 'simulation'
+  is_highlight: boolean
+  is_visible: boolean
+}
+
+type GameFormState = Partial<DbGame> & { pricesRaw?: string }
+
+const GAME_CATEGORY_STYLES: Record<
+  DbGame['category'],
+  { pill: string; label: string }
+> = {
+  vr: { pill: 'bg-cyan-500/20 text-cyan-400', label: 'Réalité Virtuelle' },
+  arcade: { pill: 'bg-orange-500/20 text-orange-400', label: 'Arcade' },
+  sport: { pill: 'bg-green-500/20 text-green-400', label: 'Sport' },
+  simulation: { pill: 'bg-red-500/20 text-red-400', label: 'Simulation' },
+}
+
+function formatGamePrices(prices: { label: string; amount: number }[]) {
+  return prices.map((p) => `${p.label}: ${formatAmount(p.amount)}`).join(' · ')
 }
 
 type EventType = 'showcase' | 'anniversaire' | 'brunch' | 'sport' | 'special'
@@ -336,6 +364,15 @@ export default function AdminDashboardPage() {
   const [menuImagePreview, setMenuImagePreview] = useState<string | null>(null)
   const [savingItem, setSavingItem] = useState(false)
   const menuImgRef = useRef<HTMLInputElement>(null)
+  const [gameItems, setGameItems] = useState<DbGame[]>([])
+  const [loadingGames, setLoadingGames] = useState(true)
+  const [gameModal, setGameModal] = useState<'create' | 'edit' | null>(null)
+  const [editingGame, setEditingGame] = useState<DbGame | null>(null)
+  const [gameForm, setGameForm] = useState<GameFormState>({})
+  const [gameImageFile, setGameImageFile] = useState<File | null>(null)
+  const [gameImagePreview, setGameImagePreview] = useState<string | null>(null)
+  const [savingGame, setSavingGame] = useState(false)
+  const gameImgRef = useRef<HTMLInputElement>(null)
   const supabase = useMemo(() => createClient(), [])
 
   const newFlyerPreviews = useMemo(
@@ -468,6 +505,155 @@ export default function AdminDashboardPage() {
   useEffect(() => {
     if (tab === 'menu' && isAuthed) void fetchMenuItems()
   }, [tab, fetchMenuItems, isAuthed])
+
+  const fetchGames = useCallback(async () => {
+    setLoadingGames(true)
+    const { data } = await supabase
+      .from('games')
+      .select('*')
+      .order('category')
+      .order('name')
+    setGameItems((data as DbGame[]) ?? [])
+    setLoadingGames(false)
+  }, [supabase])
+
+  useEffect(() => {
+    if (tab === 'games' && isAuthed) void fetchGames()
+  }, [tab, fetchGames, isAuthed])
+
+  const closeGameModal = () => {
+    setGameModal(null)
+    setEditingGame(null)
+    setGameForm({})
+    setGameImageFile(null)
+    if (gameImagePreview?.startsWith('blob:')) {
+      URL.revokeObjectURL(gameImagePreview)
+    }
+    setGameImagePreview(null)
+    if (gameImgRef.current) gameImgRef.current.value = ''
+  }
+
+  const openCreateGame = () => {
+    setEditingGame(null)
+    setGameForm({
+      is_visible: true,
+      is_highlight: false,
+      category: 'arcade',
+      pricesRaw: '',
+    })
+    setGameImageFile(null)
+    setGameImagePreview(null)
+    setGameModal('create')
+  }
+
+  const openEditGame = (game: DbGame) => {
+    setEditingGame(game)
+    setGameForm({
+      ...game,
+      pricesRaw: game.prices.map((p) => `${p.label}:${p.amount}`).join(', '),
+    })
+    setGameImageFile(null)
+    setGameImagePreview(null)
+    setGameModal('edit')
+  }
+
+  const saveGame = async () => {
+    if (!gameForm.name?.trim()) return
+
+    setSavingGame(true)
+    try {
+      let imageUrl = gameForm.image ?? ''
+      if (gameImageFile) {
+        const ext = gameImageFile.name.split('.').pop() ?? 'jpg'
+        const path = `games/${editingGame?.id ?? 'new'}-${Date.now()}.${ext}`
+        const { error: storageError } = await supabase.storage
+          .from('media')
+          .upload(path, gameImageFile, {
+            upsert: false,
+            contentType: gameImageFile.type,
+          })
+        if (storageError) {
+          alert(`Erreur upload : ${storageError.message}`)
+          return
+        }
+        const { data: u } = supabase.storage.from('media').getPublicUrl(path)
+        imageUrl = u.publicUrl
+      }
+
+      const prices = (gameForm.pricesRaw ?? '')
+        .split(',')
+        .map((s) => s.trim())
+        .filter(Boolean)
+        .map((s) => {
+          const [label, amount] = s.split(':')
+          return { label: label?.trim() ?? '', amount: Number(amount ?? 0) }
+        })
+
+      const payload = {
+        name: gameForm.name.trim(),
+        description: gameForm.description ?? '',
+        prices: prices.length > 0 ? prices : (editingGame?.prices ?? []),
+        image: imageUrl || null,
+        category: gameForm.category ?? 'arcade',
+        is_highlight: gameForm.is_highlight ?? false,
+        is_visible: gameForm.is_visible ?? true,
+      }
+
+      if (gameModal === 'edit' && editingGame) {
+        const { error } = await supabase
+          .from('games')
+          .update(payload)
+          .eq('id', editingGame.id)
+        if (error) {
+          alert(`Erreur : ${error.message}`)
+          return
+        }
+      } else {
+        const id =
+          (gameForm.name ?? '')
+            .toLowerCase()
+            .replace(/\s+/g, '-')
+            .replace(/[^a-z0-9-]/g, '') +
+          '-' +
+          Date.now()
+        const { error } = await supabase.from('games').insert({ id, ...payload })
+        if (error) {
+          alert(`Erreur : ${error.message}`)
+          return
+        }
+      }
+
+      await fetchGames()
+      closeGameModal()
+    } finally {
+      setSavingGame(false)
+    }
+  }
+
+  const deleteGame = async (id: string) => {
+    if (!window.confirm('Supprimer ce jeu ?')) return
+    const { error } = await supabase.from('games').delete().eq('id', id)
+    if (error) {
+      alert(`Erreur : ${error.message}`)
+      return
+    }
+    setGameItems((prev) => prev.filter((g) => g.id !== id))
+  }
+
+  const toggleGame = async (
+    id: string,
+    field: 'is_visible' | 'is_highlight',
+    val: boolean,
+  ) => {
+    const { error } = await supabase.from('games').update({ [field]: val }).eq('id', id)
+    if (error) {
+      alert(`Erreur : ${error.message}`)
+      return
+    }
+    setGameItems((prev) =>
+      prev.map((g) => (g.id === id ? { ...g, [field]: val } : g)),
+    )
+  }
 
   const closeMenuModal = () => {
     setMenuModal(null)
@@ -881,7 +1067,8 @@ export default function AdminDashboardPage() {
 
       <div
         className={cn(
-          'mx-auto space-y-4 px-4 py-6 max-w-3xl',
+          'mx-auto space-y-4 px-4 py-6',
+          tab === 'games' ? 'max-w-5xl' : 'max-w-3xl',
         )}
       >
         {tab === 'events' ? (
@@ -1229,8 +1416,280 @@ export default function AdminDashboardPage() {
               </div>
             )}
           </>
+        ) : tab === 'games' ? (
+          <>
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <h2 className="font-medium text-tc-cream">Gestion des Jeux</h2>
+              <button
+                type="button"
+                onClick={openCreateGame}
+                className="rounded-full border border-tc-gold/40 px-4 py-2 text-xs text-tc-gold transition hover:bg-tc-gold/10"
+              >
+                + Ajouter un jeu
+              </button>
+            </div>
+
+            {loadingGames ? (
+              <p className="mt-6 text-center text-sm text-white/30">Chargement…</p>
+            ) : gameItems.length === 0 ? (
+              <p className="mt-6 text-center text-sm text-white/30">Aucun jeu.</p>
+            ) : (
+              <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
+                {gameItems.map((game) => {
+                  const catStyle =
+                    GAME_CATEGORY_STYLES[game.category] ?? GAME_CATEGORY_STYLES.arcade
+                  return (
+                    <article
+                      key={game.id}
+                      className="relative overflow-hidden rounded-xl border border-white/5 bg-white/[0.03]"
+                    >
+                      {game.image ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={game.image}
+                          alt=""
+                          className="h-40 w-full object-cover"
+                        />
+                      ) : (
+                        <div className="flex h-40 items-center justify-center bg-white/5 text-white/25">
+                          —
+                        </div>
+                      )}
+                      <span
+                        className={cn(
+                          'absolute left-2 top-2 rounded-full px-2 py-0.5 text-[10px] uppercase',
+                          catStyle.pill,
+                        )}
+                      >
+                        {catStyle.label}
+                      </span>
+                      {game.is_highlight ? (
+                        <span className="absolute right-2 top-2 rounded-full bg-red-600/80 px-2 py-0.5 text-[10px] text-white">
+                          ★ Vedette
+                        </span>
+                      ) : null}
+                      <div className="p-4">
+                        <p className="font-medium text-tc-cream">{game.name}</p>
+                        <p className="mt-1 text-xs text-white/30">
+                          {formatGamePrices(game.prices)}
+                        </p>
+                        {game.description ? (
+                          <p className="mt-1 line-clamp-1 text-[11px] text-white/25">
+                            {game.description}
+                          </p>
+                        ) : null}
+                        <div className="mt-3 flex items-center justify-between gap-2">
+                          <div className="flex flex-wrap gap-2">
+                            <ToggleSwitch
+                              checked={game.is_visible}
+                              onChange={(v) => void toggleGame(game.id, 'is_visible', v)}
+                              label="Visible"
+                            />
+                            <ToggleSwitch
+                              checked={game.is_highlight}
+                              onChange={(v) => void toggleGame(game.id, 'is_highlight', v)}
+                              label="★"
+                            />
+                          </div>
+                          <div className="flex gap-2">
+                            <button
+                              type="button"
+                              onClick={() => openEditGame(game)}
+                              className="text-white/40 transition hover:text-tc-gold"
+                              aria-label="Modifier"
+                            >
+                              ✏️
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => void deleteGame(game.id)}
+                              className="text-white/40 transition hover:text-red-400"
+                              aria-label="Supprimer"
+                            >
+                              🗑️
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </article>
+                  )
+                })}
+              </div>
+            )}
+          </>
         ) : null}
       </div>
+
+      {gameModal && (
+        <div
+          className="fixed inset-0 z-[200] flex items-center justify-center bg-black/85 p-4"
+          onClick={closeGameModal}
+        >
+          <div
+            className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl border border-white/10 bg-[#111] p-6"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="mb-5 font-medium text-tc-cream">
+              {gameModal === 'create' ? 'Ajouter un jeu' : 'Modifier le jeu'}
+            </h3>
+
+            <div className="space-y-4">
+              <div>
+                <label className="text-xs text-white/40">Nom *</label>
+                <input
+                  type="text"
+                  value={gameForm.name ?? ''}
+                  onChange={(e) =>
+                    setGameForm((prev) => ({ ...prev, name: e.target.value }))
+                  }
+                  className={cn(FORM_INPUT_CLASS, 'mt-1')}
+                />
+              </div>
+              <div>
+                <label className="text-xs text-white/40">Description</label>
+                <textarea
+                  rows={2}
+                  value={gameForm.description ?? ''}
+                  onChange={(e) =>
+                    setGameForm((prev) => ({ ...prev, description: e.target.value }))
+                  }
+                  className={cn(FORM_INPUT_CLASS, 'mt-1 resize-none')}
+                />
+              </div>
+              <div>
+                <label className="text-xs text-white/40">Catégorie *</label>
+                <select
+                  value={gameForm.category ?? 'arcade'}
+                  onChange={(e) =>
+                    setGameForm((prev) => ({
+                      ...prev,
+                      category: e.target.value as DbGame['category'],
+                    }))
+                  }
+                  className={cn(FORM_INPUT_CLASS, 'mt-1')}
+                >
+                  <option value="vr" className="bg-[#111]">
+                    Réalité Virtuelle
+                  </option>
+                  <option value="arcade" className="bg-[#111]">
+                    Arcade
+                  </option>
+                  <option value="sport" className="bg-[#111]">
+                    Sport
+                  </option>
+                  <option value="simulation" className="bg-[#111]">
+                    Simulation
+                  </option>
+                </select>
+              </div>
+              <div>
+                <label className="text-xs text-white/40">Prix *</label>
+                <input
+                  type="text"
+                  value={gameForm.pricesRaw ?? ''}
+                  onChange={(e) =>
+                    setGameForm((prev) => ({ ...prev, pricesRaw: e.target.value }))
+                  }
+                  placeholder="3-6 min:1500, 7-9 min:3000"
+                  className={cn(FORM_INPUT_CLASS, 'mt-1')}
+                />
+              </div>
+              <div className="flex flex-wrap gap-6">
+                <label className="flex cursor-pointer items-center gap-2 text-xs text-white/50">
+                  <input
+                    type="checkbox"
+                    checked={gameForm.is_visible ?? true}
+                    onChange={(e) =>
+                      setGameForm((prev) => ({
+                        ...prev,
+                        is_visible: e.target.checked,
+                      }))
+                    }
+                    className="accent-tc-gold"
+                  />
+                  Visible
+                </label>
+                <label className="flex cursor-pointer items-center gap-2 text-xs text-white/50">
+                  <input
+                    type="checkbox"
+                    checked={gameForm.is_highlight ?? false}
+                    onChange={(e) =>
+                      setGameForm((prev) => ({
+                        ...prev,
+                        is_highlight: e.target.checked,
+                      }))
+                    }
+                    className="accent-tc-gold"
+                  />
+                  Vedette
+                </label>
+              </div>
+              <div>
+                <p className="mb-2 text-xs text-white/40">Photo</p>
+                {gameImagePreview ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={gameImagePreview}
+                    alt=""
+                    className="mb-2 h-32 w-full rounded-xl object-cover"
+                  />
+                ) : gameForm.image ? (
+                  <div className="relative mb-2 h-32 w-full overflow-hidden rounded-xl">
+                    <Image
+                      src={gameForm.image}
+                      alt=""
+                      fill
+                      className="object-cover"
+                      sizes="512px"
+                    />
+                  </div>
+                ) : null}
+                <input
+                  ref={gameImgRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0]
+                    if (!file) return
+                    if (gameImagePreview?.startsWith('blob:')) {
+                      URL.revokeObjectURL(gameImagePreview)
+                    }
+                    setGameImageFile(file)
+                    setGameImagePreview(URL.createObjectURL(file))
+                  }}
+                />
+                <button
+                  type="button"
+                  onClick={() => gameImgRef.current?.click()}
+                  className="rounded-full border border-white/15 px-4 py-2 text-xs text-white/50 transition hover:border-tc-gold/40 hover:text-tc-cream"
+                >
+                  Changer la photo
+                </button>
+              </div>
+            </div>
+
+            <div className="mt-6 flex gap-2">
+              <button
+                type="button"
+                disabled={savingGame}
+                onClick={closeGameModal}
+                className="flex-1 rounded-full border border-white/15 px-4 py-2 text-xs text-white/50 transition hover:text-tc-cream disabled:opacity-50"
+              >
+                Annuler
+              </button>
+              <button
+                type="button"
+                disabled={savingGame || !gameForm.name?.trim()}
+                onClick={() => void saveGame()}
+                className="flex-1 rounded-full bg-tc-gold px-4 py-2 text-xs font-bold uppercase tracking-wider text-tc-black transition hover:bg-tc-gold/90 disabled:opacity-50"
+              >
+                {savingGame ? 'Enregistrement…' : 'Enregistrer'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {menuModal && (
         <div
