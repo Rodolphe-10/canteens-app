@@ -1,29 +1,95 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
-import { menuCategories } from '@/data/menu'
-import { olaMenuItems } from '@/data/menu-ola'
+import { menuCategories, type MenuCategory, type MenuItem } from '@/data/menu'
+import { createClient } from '@/lib/supabase/client'
 import { useMenuImageOverrides } from '@/hooks/useMenuImageOverrides'
 import MenuCard from './MenuCard'
 
-const menuItems = olaMenuItems
+type DbMenuItem = {
+  id: string
+  name_fr: string
+  name_en?: string
+  desc_fr?: string
+  desc_en?: string
+  price: number
+  category: string
+  image?: string
+  is_popular: boolean
+}
 
-function getDefaultFoodCategory() {
+function getDefaultFoodCategory(items: MenuItem[]) {
   const withPhoto = menuCategories.find(
     (cat) =>
       cat.type === 'food' &&
-      menuItems.some((item) => item.category === cat.id && item.image),
+      items.some((item) => item.category === cat.id && item.image),
   )
   return withPhoto?.id ?? 'entrees'
 }
 
 export default function MenuSection({ locale }: { locale: string }) {
-  const [activeCategory, setActiveCategory] = useState(getDefaultFoodCategory)
+  const [menuItems, setMenuItems] = useState<MenuItem[]>([])
+  const [loadingMenu, setLoadingMenu] = useState(true)
+  const [activeCategory, setActiveCategory] = useState<MenuCategory>('entrees')
   const [activeType, setActiveType] = useState<'food' | 'drink'>('food')
   const [toast, setToast] = useState<{ id: number; text: string } | null>(null)
   const imageOverrides = useMenuImageOverrides()
   const navRef = useRef<HTMLDivElement>(null)
+
+  const fetchMenu = useCallback(async () => {
+    const supabase = createClient()
+    const { data } = await supabase
+      .from('menu_items')
+      .select('*')
+      .eq('is_visible', true)
+    if (!data) {
+      setLoadingMenu(false)
+      return
+    }
+    setMenuItems(
+      data.map((row: DbMenuItem) => ({
+        id: row.id,
+        nameFr: row.name_fr,
+        nameEn: row.name_en,
+        descFr: row.desc_fr,
+        descEn: row.desc_en,
+        price: row.price,
+        category: row.category as MenuCategory,
+        image: row.image,
+        isPopular: row.is_popular,
+      })),
+    )
+    setLoadingMenu(false)
+  }, [])
+
+  useEffect(() => {
+    void fetchMenu()
+  }, [fetchMenu])
+
+  useEffect(() => {
+    const supabase = createClient()
+    const channel = supabase
+      .channel('menu_items_live')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'menu_items' },
+        () => void fetchMenu(),
+      )
+      .subscribe()
+    return () => {
+      void supabase.removeChannel(channel)
+    }
+  }, [fetchMenu])
+
+  useEffect(() => {
+    if (loadingMenu) return
+    setActiveCategory((prev) =>
+      menuItems.some((i) => i.category === prev)
+        ? prev
+        : getDefaultFoodCategory(menuItems),
+    )
+  }, [loadingMenu, menuItems])
 
   const filteredCategories = menuCategories.filter(
     (c) => c.type === activeType && menuItems.some((item) => item.category === c.id),
@@ -43,6 +109,16 @@ export default function MenuSection({ locale }: { locale: string }) {
     const timeout = window.setTimeout(() => setToast(null), 2000)
     return () => window.clearTimeout(timeout)
   }, [toast])
+
+  if (loadingMenu) {
+    return (
+      <div className="flex min-h-[50vh] items-center justify-center">
+        <p className="animate-pulse text-xs uppercase tracking-widest text-white/20">
+          Chargement du menu…
+        </p>
+      </div>
+    )
+  }
 
   return (
     <section className="min-h-screen bg-tc-black">

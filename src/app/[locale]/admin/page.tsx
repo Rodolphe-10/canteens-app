@@ -1,7 +1,9 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import Image from 'next/image'
 import { Lock } from 'lucide-react'
+import { menuCategories } from '@/data/menu'
 import { olaMenuItems } from '@/data/menu-ola'
 import { useMenuImageOverrides } from '@/hooks/useMenuImageOverrides'
 import { cn } from '@/lib/utils'
@@ -16,18 +18,19 @@ const ROLES = {
 type Role = keyof typeof ROLES
 const ACCESS_KEY = 'tc_staff_auth_role'
 
-type Tab = 'reservations' | 'orders' | 'events' | 'images'
+type Tab = 'reservations' | 'orders' | 'events' | 'images' | 'menu'
 
 const TAB_LABELS: Record<Tab, string> = {
   reservations: 'Réservations',
   orders: 'Commandes',
   events: 'Événements',
   images: 'Images Menu',
+  menu: 'Menu',
 }
 
 const AVAILABLE_TABS: Record<Role, Tab[]> = {
-  admin: ['reservations', 'orders', 'events', 'images'],
-  chef: ['reservations', 'orders'],
+  admin: ['reservations', 'orders', 'events', 'images', 'menu'],
+  chef: ['reservations', 'orders', 'menu'],
   cm: ['events'],
 }
 
@@ -68,6 +71,18 @@ type OrderRow = {
   statut: OrderStatus
   quartier: string
   created_at: string
+}
+
+type MenuItem = {
+  id: string
+  name_fr: string
+  name_en?: string
+  desc_fr?: string
+  price: number
+  category: string
+  image?: string
+  is_popular: boolean
+  is_visible: boolean
 }
 
 type EventType = 'showcase' | 'anniversaire' | 'brunch' | 'sport' | 'special'
@@ -320,6 +335,17 @@ export default function AdminDashboardPage() {
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [flyerFiles, setFlyerFiles] = useState<File[]>([])
   const flyerInputRef = useRef<HTMLInputElement>(null)
+  const [menuItems, setMenuItems] = useState<MenuItem[]>([])
+  const [loadingMenu, setLoadingMenu] = useState(true)
+  const [menuSearch, setMenuSearch] = useState('')
+  const [menuCatFilter, setMenuCatFilter] = useState('all')
+  const [menuModal, setMenuModal] = useState<'create' | 'edit' | null>(null)
+  const [editingItem, setEditingItem] = useState<MenuItem | null>(null)
+  const [menuForm, setMenuForm] = useState<Partial<MenuItem>>({})
+  const [menuImageFile, setMenuImageFile] = useState<File | null>(null)
+  const [menuImagePreview, setMenuImagePreview] = useState<string | null>(null)
+  const [savingItem, setSavingItem] = useState(false)
+  const menuImgRef = useRef<HTMLInputElement>(null)
   const supabase = useMemo(() => createClient(), [])
 
   const newFlyerPreviews = useMemo(
@@ -338,6 +364,18 @@ export default function AdminDashboardPage() {
     if (!q) return olaMenuItems
     return olaMenuItems.filter((item) => item.nameFr.toLowerCase().includes(q))
   }, [search])
+
+  const menuUniqueCategories = useMemo(
+    () => [...new Set(menuItems.map((i) => i.category))].sort(),
+    [menuItems],
+  )
+
+  const adminMenuFiltered = useMemo(() => {
+    const q = menuSearch.trim().toLowerCase()
+    return menuItems
+      .filter((i) => menuCatFilter === 'all' || i.category === menuCatFilter)
+      .filter((i) => i.name_fr.toLowerCase().includes(q))
+  }, [menuItems, menuCatFilter, menuSearch])
 
   const availableTabs = useMemo(
     () => AVAILABLE_TABS[role ?? 'cm'],
@@ -431,6 +469,116 @@ export default function AdminDashboardPage() {
   useEffect(() => {
     if (tab === 'events' && isAuthed) void fetchEvents()
   }, [tab, fetchEvents, isAuthed])
+
+  const fetchMenuItems = useCallback(async () => {
+    setLoadingMenu(true)
+    const { data } = await supabase
+      .from('menu_items')
+      .select('*')
+      .order('category')
+      .order('name_fr')
+    setMenuItems((data as MenuItem[]) ?? [])
+    setLoadingMenu(false)
+  }, [supabase])
+
+  useEffect(() => {
+    if (tab === 'menu' && isAuthed) void fetchMenuItems()
+  }, [tab, fetchMenuItems, isAuthed])
+
+  const closeMenuModal = () => {
+    setMenuModal(null)
+    setEditingItem(null)
+    setMenuForm({})
+    setMenuImageFile(null)
+    if (menuImagePreview?.startsWith('blob:')) {
+      URL.revokeObjectURL(menuImagePreview)
+    }
+    setMenuImagePreview(null)
+    if (menuImgRef.current) menuImgRef.current.value = ''
+  }
+
+  const openCreateMenuItem = () => {
+    setEditingItem(null)
+    setMenuForm({ is_visible: true, is_popular: false, category: 'plats-locaux' })
+    setMenuImageFile(null)
+    setMenuImagePreview(null)
+    setMenuModal('create')
+  }
+
+  const openEditMenuItem = (item: MenuItem) => {
+    setEditingItem(item)
+    setMenuForm({ ...item })
+    setMenuImageFile(null)
+    setMenuImagePreview(null)
+    setMenuModal('edit')
+  }
+
+  const saveMenuItem = async () => {
+    if (!menuForm.name_fr?.trim()) return
+
+    setSavingItem(true)
+    try {
+      let imageUrl = menuForm.image ?? ''
+      if (menuImageFile) {
+        const ext = menuImageFile.name.split('.').pop() ?? 'webp'
+        const path = `menu/${editingItem?.id ?? Date.now()}.${ext}`
+        await supabase.storage
+          .from('media')
+          .upload(path, menuImageFile, {
+            upsert: true,
+            contentType: menuImageFile.type,
+          })
+        const { data: u } = supabase.storage.from('media').getPublicUrl(path)
+        imageUrl = u.publicUrl
+      }
+
+      const payload = {
+        name_fr: menuForm.name_fr.trim(),
+        name_en: menuForm.name_en ?? null,
+        desc_fr: menuForm.desc_fr ?? null,
+        price: Number(menuForm.price ?? 0),
+        category: menuForm.category ?? 'plats-locaux',
+        image: imageUrl || null,
+        is_popular: menuForm.is_popular ?? false,
+        is_visible: menuForm.is_visible ?? true,
+      }
+
+      if (menuModal === 'edit' && editingItem) {
+        await supabase.from('menu_items').update(payload).eq('id', editingItem.id)
+      } else {
+        const id =
+          (menuForm.name_fr ?? '')
+            .toLowerCase()
+            .replace(/\s+/g, '-')
+            .replace(/[^a-z0-9-]/g, '') +
+          '-' +
+          Date.now()
+        await supabase.from('menu_items').insert({ id, ...payload })
+      }
+
+      await fetchMenuItems()
+      closeMenuModal()
+    } finally {
+      setSavingItem(false)
+    }
+  }
+
+  const deleteMenuItem = async (id: string) => {
+    if (!window.confirm('Supprimer ce plat ?')) return
+    await supabase.from('menu_items').delete().eq('id', id)
+    setMenuItems((prev) => prev.filter((i) => i.id !== id))
+  }
+
+  const toggleMenuItem = async (
+    id: string,
+    field: 'is_visible' | 'is_popular',
+    val: boolean,
+  ) => {
+    await supabase.from('menu_items').update({ [field]: val }).eq('id', id)
+    setMenuItems((prev) =>
+      prev.map((i) => (i.id === id ? { ...i, [field]: val } : i)),
+    )
+  }
 
   const uploadFlyer = useCallback(
     async (file: File, eventId: string, index: number): Promise<string> => {
@@ -967,7 +1115,121 @@ export default function AdminDashboardPage() {
             )
           })
           )
-        ) : (
+        ) : tab === 'menu' ? (
+          <>
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <h2 className="font-medium text-tc-cream">Gestion du Menu</h2>
+              <button
+                type="button"
+                onClick={openCreateMenuItem}
+                className="rounded-full border border-tc-gold/40 px-4 py-2 text-xs text-tc-gold transition hover:bg-tc-gold/10"
+              >
+                + Ajouter un plat
+              </button>
+            </div>
+
+            <div className="mt-4 mb-6 flex flex-wrap gap-3">
+              <input
+                type="search"
+                value={menuSearch}
+                onChange={(e) => setMenuSearch(e.target.value)}
+                placeholder="Rechercher..."
+                className={cn(FORM_INPUT_CLASS, 'max-w-xs flex-1')}
+              />
+              <select
+                value={menuCatFilter}
+                onChange={(e) => setMenuCatFilter(e.target.value)}
+                className={cn(FORM_INPUT_CLASS, 'max-w-[200px]')}
+              >
+                <option value="all" className="bg-[#111]">
+                  Toutes
+                </option>
+                {menuUniqueCategories.map((cat) => (
+                  <option key={cat} value={cat} className="bg-[#111]">
+                    {menuCategories.find((c) => c.id === cat)?.labelFr ?? cat}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {loadingMenu ? (
+              <p className="text-center text-sm text-white/30">Chargement…</p>
+            ) : adminMenuFiltered.length === 0 ? (
+              <p className="text-center text-sm text-white/30">Aucun plat trouvé.</p>
+            ) : (
+              <div className="grid grid-cols-1 gap-2">
+                {adminMenuFiltered.map((item) => {
+                  const catLabel =
+                    menuCategories.find((c) => c.id === item.category)?.labelFr ??
+                    item.category
+                  return (
+                    <article
+                      key={item.id}
+                      className="flex items-center gap-3 rounded-xl border border-white/5 bg-white/[0.03] p-3"
+                    >
+                      {item.image ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={item.image}
+                          alt=""
+                          className="h-14 w-14 shrink-0 rounded-lg bg-white/5 object-cover"
+                        />
+                      ) : (
+                        <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-lg bg-white/5 text-[10px] text-white/25">
+                          —
+                        </div>
+                      )}
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-medium text-tc-cream">{item.name_fr}</p>
+                        <p className="text-[10px] uppercase tracking-wider text-white/30">
+                          {catLabel}
+                        </p>
+                        <p className="text-sm text-tc-gold">{formatAmount(item.price)}</p>
+                        {item.desc_fr ? (
+                          <p className="line-clamp-1 text-[10px] text-white/25">
+                            {item.desc_fr}
+                          </p>
+                        ) : null}
+                      </div>
+                      <div className="flex shrink-0 flex-col items-end gap-2">
+                        <div className="inline-flex flex-wrap items-center justify-end gap-2">
+                          <ToggleSwitch
+                            checked={item.is_visible}
+                            onChange={(v) => void toggleMenuItem(item.id, 'is_visible', v)}
+                            label="Visible"
+                          />
+                          <ToggleSwitch
+                            checked={item.is_popular}
+                            onChange={(v) => void toggleMenuItem(item.id, 'is_popular', v)}
+                            label="★"
+                          />
+                        </div>
+                        <div className="flex gap-2">
+                          <button
+                            type="button"
+                            onClick={() => openEditMenuItem(item)}
+                            className="text-white/40 transition hover:text-tc-gold"
+                            aria-label="Modifier"
+                          >
+                            ✏️
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => void deleteMenuItem(item.id)}
+                            className="text-white/40 transition hover:text-red-400"
+                            aria-label="Supprimer"
+                          >
+                            🗑️
+                          </button>
+                        </div>
+                      </div>
+                    </article>
+                  )
+                })}
+              </div>
+            )}
+          </>
+        ) : tab === 'images' ? (
           <>
             <input
               type="search"
@@ -1010,8 +1272,185 @@ export default function AdminDashboardPage() {
               })}
             </div>
           </>
-        )}
+        ) : null}
       </div>
+
+      {menuModal && (
+        <div
+          className="fixed inset-0 z-[200] flex items-center justify-center bg-black/85 p-4"
+          onClick={closeMenuModal}
+        >
+          <div
+            className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl border border-white/10 bg-[#111] p-6"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="mb-5 font-medium text-tc-cream">
+              {menuModal === 'create' ? 'Créer un plat' : 'Modifier le plat'}
+            </h3>
+
+            <div className="space-y-4">
+              <div>
+                <label className="text-xs text-white/40">Nom FR *</label>
+                <input
+                  type="text"
+                  value={menuForm.name_fr ?? ''}
+                  onChange={(e) =>
+                    setMenuForm((prev) => ({ ...prev, name_fr: e.target.value }))
+                  }
+                  className={cn(FORM_INPUT_CLASS, 'mt-1')}
+                />
+              </div>
+              <div>
+                <label className="text-xs text-white/40">Nom EN</label>
+                <input
+                  type="text"
+                  value={menuForm.name_en ?? ''}
+                  onChange={(e) =>
+                    setMenuForm((prev) => ({ ...prev, name_en: e.target.value }))
+                  }
+                  className={cn(FORM_INPUT_CLASS, 'mt-1')}
+                />
+              </div>
+              <div>
+                <label className="text-xs text-white/40">Description FR</label>
+                <textarea
+                  rows={2}
+                  value={menuForm.desc_fr ?? ''}
+                  onChange={(e) =>
+                    setMenuForm((prev) => ({ ...prev, desc_fr: e.target.value }))
+                  }
+                  className={cn(FORM_INPUT_CLASS, 'mt-1 resize-none')}
+                />
+              </div>
+              <div>
+                <label className="text-xs text-white/40">Prix (FCFA) *</label>
+                <input
+                  type="number"
+                  min={0}
+                  value={menuForm.price ?? ''}
+                  onChange={(e) =>
+                    setMenuForm((prev) => ({
+                      ...prev,
+                      price: e.target.value ? Number(e.target.value) : 0,
+                    }))
+                  }
+                  className={cn(FORM_INPUT_CLASS, 'mt-1')}
+                />
+              </div>
+              <div>
+                <label className="text-xs text-white/40">Catégorie *</label>
+                <select
+                  value={menuForm.category ?? 'plats-locaux'}
+                  onChange={(e) =>
+                    setMenuForm((prev) => ({ ...prev, category: e.target.value }))
+                  }
+                  className={cn(FORM_INPUT_CLASS, 'mt-1')}
+                >
+                  {menuCategories.map((cat) => (
+                    <option key={cat.id} value={cat.id} className="bg-[#111]">
+                      {cat.labelFr}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <p className="mb-2 text-xs text-white/40">Photo</p>
+                {menuImagePreview ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={menuImagePreview}
+                    alt=""
+                    className="mb-2 h-32 w-full rounded-xl object-cover"
+                  />
+                ) : menuForm.image ? (
+                  <div className="relative mb-2 h-32 w-full overflow-hidden rounded-xl">
+                    <Image
+                      src={menuForm.image}
+                      alt=""
+                      fill
+                      className="object-cover"
+                      sizes="512px"
+                    />
+                  </div>
+                ) : null}
+                <input
+                  ref={menuImgRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0]
+                    if (!file) return
+                    if (menuImagePreview?.startsWith('blob:')) {
+                      URL.revokeObjectURL(menuImagePreview)
+                    }
+                    setMenuImageFile(file)
+                    setMenuImagePreview(URL.createObjectURL(file))
+                  }}
+                />
+                <button
+                  type="button"
+                  onClick={() => menuImgRef.current?.click()}
+                  className="rounded-full border border-white/15 px-4 py-2 text-xs text-white/50 transition hover:border-tc-gold/40 hover:text-tc-cream"
+                >
+                  Changer la photo
+                </button>
+              </div>
+
+              <div className="flex flex-wrap gap-6">
+                <label className="flex cursor-pointer items-center gap-2 text-xs text-white/50">
+                  <input
+                    type="checkbox"
+                    checked={menuForm.is_visible ?? true}
+                    onChange={(e) =>
+                      setMenuForm((prev) => ({
+                        ...prev,
+                        is_visible: e.target.checked,
+                      }))
+                    }
+                    className="accent-tc-gold"
+                  />
+                  Visible
+                </label>
+                <label className="flex cursor-pointer items-center gap-2 text-xs text-white/50">
+                  <input
+                    type="checkbox"
+                    checked={menuForm.is_popular ?? false}
+                    onChange={(e) =>
+                      setMenuForm((prev) => ({
+                        ...prev,
+                        is_popular: e.target.checked,
+                      }))
+                    }
+                    className="accent-tc-gold"
+                  />
+                  Populaire
+                </label>
+              </div>
+            </div>
+
+            <div className="mt-6 flex gap-2">
+              <button
+                type="button"
+                disabled={savingItem}
+                onClick={closeMenuModal}
+                className="flex-1 rounded-full border border-white/15 px-4 py-2 text-xs text-white/50 transition hover:text-tc-cream disabled:opacity-50"
+              >
+                Annuler
+              </button>
+              <button
+                type="button"
+                disabled={savingItem || !menuForm.name_fr?.trim()}
+                onClick={() => void saveMenuItem()}
+                className="flex-1 rounded-full bg-tc-gold px-4 py-2 text-xs font-bold uppercase tracking-wider text-tc-black transition hover:bg-tc-gold/90 disabled:opacity-50"
+              >
+                {savingItem ? 'Enregistrement…' : 'Enregistrer'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {eventModal && (
         <div
