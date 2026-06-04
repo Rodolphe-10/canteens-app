@@ -521,11 +521,12 @@ export default function AdminDashboardPage() {
       let imageUrl = menuForm.image ?? ''
       if (menuImageFile) {
         const ext = menuImageFile.name.split('.').pop() ?? 'webp'
-        const path = `menu/${editingItem?.id ?? Date.now()}.${ext}`
+        // Chemin unique avec timestamp pour éviter le cache CDN Supabase
+        const path = `menu/${editingItem?.id ?? 'new'}-${Date.now()}.${ext}`
         await supabase.storage
           .from('media')
           .upload(path, menuImageFile, {
-            upsert: true,
+            upsert: false,
             contentType: menuImageFile.type,
           })
         const { data: u } = supabase.storage.from('media').getPublicUrl(path)

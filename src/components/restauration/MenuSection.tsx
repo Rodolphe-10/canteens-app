@@ -4,7 +4,6 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { menuCategories, type MenuCategory, type MenuItem } from '@/data/menu'
 import { createClient } from '@/lib/supabase/client'
-import { useMenuImageOverrides } from '@/hooks/useMenuImageOverrides'
 import MenuCard from './MenuCard'
 
 type DbMenuItem = {
@@ -34,7 +33,6 @@ export default function MenuSection({ locale }: { locale: string }) {
   const [activeCategory, setActiveCategory] = useState<MenuCategory>('entrees')
   const [activeType, setActiveType] = useState<'food' | 'drink'>('food')
   const [toast, setToast] = useState<{ id: number; text: string } | null>(null)
-  const imageOverrides = useMenuImageOverrides()
   const navRef = useRef<HTMLDivElement>(null)
 
   const fetchMenu = useCallback(async () => {
@@ -190,7 +188,7 @@ export default function MenuSection({ locale }: { locale: string }) {
                 transition={{ duration: 0.3, delay: i * 0.04 }}
               >
                 <MenuCard
-                  item={{ ...item, image: imageOverrides[item.id] ?? item.image }}
+                  item={item}
                   locale={locale}
                   onAdded={(label) =>
                     setToast({
