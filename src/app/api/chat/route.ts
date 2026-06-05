@@ -2,11 +2,13 @@ import OpenAI from 'openai'
 import type { ChatCompletionMessageParam } from 'openai/resources/chat/completions'
 import { NextRequest } from 'next/server'
 
-// Groq est compatible avec l'API OpenAI — seul le baseURL change
-const openai = new OpenAI({
-  apiKey: process.env.GROQ_API_KEY,
-  baseURL: 'https://api.groq.com/openai/v1',
-})
+// Initialisé en lazy pour éviter l'erreur au build (GROQ_API_KEY absent à ce stade)
+function getClient() {
+  return new OpenAI({
+    apiKey: process.env.GROQ_API_KEY ?? '',
+    baseURL: 'https://api.groq.com/openai/v1',
+  })
+}
 
 const SYSTEM_PROMPT = `Tu es l'assistant virtuel de The Canteen's, un restaurant-lounge-game room haut de gamme situé à Yaoundé, Cameroun, dans le quartier Dragage.
 
@@ -81,6 +83,7 @@ export async function POST(req: NextRequest) {
   try {
     const { messages } = await req.json() as { messages: ChatCompletionMessageParam[] }
 
+    const openai = getClient()
     const stream = await openai.chat.completions.create({
       model: 'llama-3.1-70b-versatile',
       stream: true,
