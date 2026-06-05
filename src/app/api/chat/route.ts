@@ -102,7 +102,7 @@ export async function POST(req: NextRequest) {
 
     const openai = getClient()
     const stream = await openai.chat.completions.create({
-      model: 'llama3-70b-8192',
+      model: 'llama-3.3-70b-versatile',
       stream: true,
       max_tokens: 400,
       temperature: 0.7,
