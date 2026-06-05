@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { useRef, useState } from 'react'
 import { ArrowLeft, ArrowRight } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { useGallery } from '@/hooks/useGallery'
 import InfiniteGalleryStrip from '@/components/ui/InfiniteGalleryStrip'
 
 export interface SpaceConfig {
@@ -57,7 +58,7 @@ export default function SpacePage({
   const ambiance = locale === 'fr' ? config.ambianceFr : config.ambianceEn
   const features = locale === 'fr' ? config.featuresFr : config.featuresEn
   const dividerClass = dividerFromBorder(config.borderColor)
-  const galleryImages = config.images
+  const galleryImages = useGallery(config.id, config.images)
 
   return (
     <>
@@ -89,9 +90,9 @@ export default function SpacePage({
             aria-hidden
           />
         )}
-        {config.images[0] && !heroError && (
+        {galleryImages[0] && !heroError && (
           <Image
-            src={config.images[0]}
+            src={galleryImages[0]}
             alt={name}
             fill
             className="object-cover"

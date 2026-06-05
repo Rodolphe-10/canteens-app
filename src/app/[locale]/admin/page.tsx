@@ -17,7 +17,7 @@ const ROLES = {
 type Role = keyof typeof ROLES
 const ACCESS_KEY = 'tc_staff_auth_role'
 
-type Tab = 'reservations' | 'orders' | 'events' | 'menu' | 'games'
+type Tab = 'reservations' | 'orders' | 'events' | 'menu' | 'games' | 'galleries'
 
 const TAB_LABELS: Record<Tab, string> = {
   reservations: 'Réservations',
@@ -25,13 +25,49 @@ const TAB_LABELS: Record<Tab, string> = {
   events: 'Événements',
   menu: 'Menu',
   games: 'Jeux',
+  galleries: 'Galeries',
 }
 
 const AVAILABLE_TABS: Record<Role, Tab[]> = {
-  admin: ['reservations', 'orders', 'events', 'menu', 'games'],
+  admin: ['reservations', 'orders', 'events', 'menu', 'games', 'galleries'],
   chef: ['reservations', 'orders', 'menu'],
-  cm: ['events'],
+  cm: ['events', 'galleries'],
 }
+
+const GALLERY_DEFINITIONS = [
+  {
+    id: 'home-hero',
+    labelFr: 'Accueil — Hero',
+    description: "Diaporama de la page d'accueil",
+  },
+  {
+    id: 'game-room',
+    labelFr: 'Game Room — Galerie',
+    description: 'Bande défilante page Game Room',
+  },
+  {
+    id: 'lounge',
+    labelFr: 'Lounge — Galerie',
+    description: 'Photos de la page Lounge',
+  },
+  {
+    id: 'restaurant',
+    labelFr: 'Restaurant — Galerie',
+    description: 'Photos de la page Restaurant',
+  },
+  {
+    id: 'terrasse',
+    labelFr: 'Terrasse — Galerie',
+    description: 'Photos de la page Terrasse',
+  },
+  {
+    id: 'nos-espaces',
+    labelFr: 'Nos Espaces — Galerie',
+    description: 'Bande défilante page Nos Espaces',
+  },
+] as const
+
+type GalleryPhotoRow = { id: string; image_url: string; position: number }
 
 function getInitialTab(r: Role): Tab {
   if (r === 'cm') return 'events'
@@ -374,6 +410,12 @@ export default function AdminDashboardPage() {
   const [gameImagePreview, setGameImagePreview] = useState<string | null>(null)
   const [savingGame, setSavingGame] = useState(false)
   const gameImgRef = useRef<HTMLInputElement>(null)
+  const [activeGallery, setActiveGallery] = useState<string | null>(null)
+  const [galleryPhotos, setGalleryPhotos] = useState<GalleryPhotoRow[]>([])
+  const [loadingGallery, setLoadingGallery] = useState(false)
+  const [galleryUploadFile, setGalleryUploadFile] = useState<File | null>(null)
+  const [uploadingGallery, setUploadingGallery] = useState(false)
+  const galleryFileRef = useRef<HTMLInputElement>(null)
   const supabase = useMemo(() => createClient(), [])
 
   const newFlyerPreviews = useMemo(
@@ -521,6 +563,65 @@ export default function AdminDashboardPage() {
   useEffect(() => {
     if (tab === 'games' && isAuthed) void fetchGames()
   }, [tab, fetchGames, isAuthed])
+
+  const fetchGalleryPhotos = useCallback(
+    async (galleryId: string) => {
+      setLoadingGallery(true)
+      const { data } = await supabase
+        .from('gallery_photos')
+        .select('*')
+        .eq('gallery_id', galleryId)
+        .order('position')
+      setGalleryPhotos((data ?? []) as GalleryPhotoRow[])
+      setLoadingGallery(false)
+    },
+    [supabase],
+  )
+
+  useEffect(() => {
+    if (activeGallery) void fetchGalleryPhotos(activeGallery)
+  }, [activeGallery, fetchGalleryPhotos])
+
+  const uploadGalleryPhoto = async (file: File) => {
+    if (!activeGallery) return
+    setUploadingGallery(true)
+    const ext = file.name.split('.').pop() ?? 'jpg'
+    const path = `galleries/${activeGallery}/${Date.now()}.${ext}`
+    const { error: storageError } = await supabase.storage
+      .from('media')
+      .upload(path, file, { upsert: false, contentType: file.type })
+    if (storageError) {
+      alert(`Erreur upload : ${storageError.message}`)
+      setUploadingGallery(false)
+      return
+    }
+    const { data: u } = supabase.storage.from('media').getPublicUrl(path)
+    const nextPos = galleryPhotos.length
+    const { error } = await supabase.from('gallery_photos').insert({
+      gallery_id: activeGallery,
+      image_url: u.publicUrl,
+      position: nextPos,
+    })
+    if (error) {
+      alert(`Erreur : ${error.message}`)
+      setUploadingGallery(false)
+      return
+    }
+    await fetchGalleryPhotos(activeGallery)
+    setGalleryUploadFile(null)
+    if (galleryFileRef.current) galleryFileRef.current.value = ''
+    setUploadingGallery(false)
+  }
+
+  const deleteGalleryPhoto = async (id: string) => {
+    if (!window.confirm('Supprimer cette photo ?')) return
+    const { error } = await supabase.from('gallery_photos').delete().eq('id', id)
+    if (error) {
+      alert(`Erreur : ${error.message}`)
+      return
+    }
+    setGalleryPhotos((prev) => prev.filter((p) => p.id !== id))
+  }
 
   const closeGameModal = () => {
     setGameModal(null)
@@ -1071,7 +1172,7 @@ export default function AdminDashboardPage() {
       <div
         className={cn(
           'mx-auto space-y-4 px-4 py-6',
-          tab === 'games' ? 'max-w-5xl' : 'max-w-3xl',
+          tab === 'games' || tab === 'galleries' ? 'max-w-5xl' : 'max-w-3xl',
         )}
       >
         {tab === 'events' ? (
@@ -1526,6 +1627,102 @@ export default function AdminDashboardPage() {
                   )
                 })}
               </div>
+            )}
+          </>
+        ) : tab === 'galleries' ? (
+          <>
+            {!activeGallery ? (
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                {GALLERY_DEFINITIONS.map((gallery) => (
+                  <button
+                    key={gallery.id}
+                    type="button"
+                    onClick={() => setActiveGallery(gallery.id)}
+                    className="flex cursor-pointer items-center justify-between rounded-xl border border-white/5 bg-white/[0.03] p-4 text-left transition hover:border-tc-gold/30"
+                  >
+                    <div>
+                      <p className="text-sm font-medium text-tc-cream">
+                        {gallery.labelFr}
+                      </p>
+                      <p className="mt-1 text-xs text-white/40">{gallery.description}</p>
+                    </div>
+                    <span className="text-white/30">→</span>
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <>
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setActiveGallery(null)}
+                    className="text-xs text-white/40 transition hover:text-tc-cream"
+                  >
+                    ← Toutes les galeries
+                  </button>
+                  <p className="text-sm font-medium text-tc-cream">
+                    {GALLERY_DEFINITIONS.find((g) => g.id === activeGallery)?.labelFr}
+                  </p>
+                </div>
+
+                <input
+                  ref={galleryFileRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(e) => {
+                    const f = e.target.files?.[0]
+                    if (f) {
+                      setGalleryUploadFile(f)
+                      void uploadGalleryPhoto(f)
+                    }
+                  }}
+                />
+                <button
+                  type="button"
+                  onClick={() => galleryFileRef.current?.click()}
+                  disabled={uploadingGallery}
+                  className="mt-4 rounded-full border border-tc-gold/40 px-4 py-2 text-xs text-tc-gold transition hover:bg-tc-gold/10 disabled:opacity-50"
+                >
+                  {uploadingGallery ? 'Envoi…' : '+ Ajouter une photo'}
+                </button>
+
+                {loadingGallery ? (
+                  <p className="mt-6 text-center text-sm text-white/30">Chargement…</p>
+                ) : galleryPhotos.length === 0 ? (
+                  <p className="mt-6 text-center text-sm text-white/30">
+                    Aucune photo — ajoutez-en une ci-dessus.
+                  </p>
+                ) : (
+                  <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
+                    {galleryPhotos.map((photo) => (
+                      <div
+                        key={photo.id}
+                        className="group relative aspect-video overflow-hidden rounded-lg bg-white/5"
+                      >
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={photo.image_url}
+                          alt=""
+                          className="h-full w-full object-cover"
+                        />
+                        <div className="absolute inset-0 flex items-center justify-center bg-black/50 opacity-0 transition group-hover:opacity-100">
+                          <Tooltip text="Supprimer" position="top">
+                            <button
+                              type="button"
+                              onClick={() => void deleteGalleryPhoto(photo.id)}
+                              className="text-lg text-red-400"
+                              aria-label="Supprimer"
+                            >
+                              🗑️
+                            </button>
+                          </Tooltip>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </>
             )}
           </>
         ) : null}

@@ -1,50 +1,60 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { motion, AnimatePresence } from 'framer-motion'
 import { ChevronDown } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { useGallery } from '@/hooks/useGallery'
 import { mediaUrls } from '@/lib/media'
 
-const slides = [
-  {
-    src: mediaUrls.lounge.lounge1,
-    label: 'Le Lounge',
-    gradient: 'from-tc-navy/80 via-black/60 to-black/90',
-  },
-  {
-    src: mediaUrls.restaurant.restaurant,
-    label: 'Le Restaurant',
-    gradient: 'from-red-950/80 via-black/60 to-black/90',
-  },
-  {
-    src: mediaUrls.gameRoom.gameroom1,
-    label: 'Game Room',
-    gradient: 'from-purple-950/80 via-black/60 to-black/90',
-  },
-  {
-    src: mediaUrls.terrasse.terrasse1,
-    label: 'La Terrasse',
-    gradient: 'from-stone-900/80 via-black/60 to-black/90',
-  },
+const HERO_LABELS = ['Le Lounge', 'Le Restaurant', 'Game Room', 'La Terrasse']
+const HERO_GRADIENTS = [
+  'from-tc-navy/80 via-black/60 to-black/90',
+  'from-red-950/80 via-black/60 to-black/90',
+  'from-purple-950/80 via-black/60 to-black/90',
+  'from-stone-900/80 via-black/60 to-black/90',
+]
+const HERO_FALLBACK = [
+  mediaUrls.lounge.lounge1,
+  mediaUrls.restaurant.restaurant,
+  mediaUrls.gameRoom.gameroom1,
+  mediaUrls.terrasse.terrasse1,
 ]
 
 export default function HeroGallery({ locale }: { locale: string }) {
+  const urls = useGallery('home-hero', HERO_FALLBACK)
+  const slides = useMemo(
+    () =>
+      urls.map((src, i) => ({
+        src,
+        label: HERO_LABELS[i] ?? '',
+        gradient: HERO_GRADIENTS[i] ?? 'from-black/80 via-black/60 to-black/90',
+      })),
+    [urls],
+  )
+
   const [current, setCurrent] = useState(0)
   const [isLoaded, setIsLoaded] = useState(false)
   const [imgError, setImgError] = useState(false)
 
   const next = useCallback(() => {
-    setCurrent((prev) => (prev + 1) % slides.length)
-  }, [])
+    setCurrent((prev) => (prev + 1) % Math.max(slides.length, 1))
+  }, [slides.length])
+
+  useEffect(() => {
+    if (current >= slides.length) setCurrent(0)
+  }, [slides.length, current])
+
+  const slide = slides[current] ?? slides[0]
 
   useEffect(() => {
     setIsLoaded(true)
+    if (slides.length === 0) return
     const timer = setInterval(next, 5000)
     return () => clearInterval(timer)
-  }, [next])
+  }, [next, slides.length])
 
   useEffect(() => {
     setImgError(false)
@@ -70,10 +80,10 @@ export default function HeroGallery({ locale }: { locale: string }) {
               current === 3 && 'from-stone-900 to-tc-black',
             )}
           />
-          {!imgError && (
+          {!imgError && slide && (
             <Image
-              src={slides[current].src}
-              alt={slides[current].label}
+              src={slide.src}
+              alt={slide.label}
               fill
               sizes="100vw"
               className="object-cover"
@@ -82,7 +92,7 @@ export default function HeroGallery({ locale }: { locale: string }) {
             />
           )}
           <div
-            className={`absolute inset-0 bg-gradient-to-b ${slides[current].gradient}`}
+            className={`absolute inset-0 bg-gradient-to-b ${slide?.gradient ?? ''}`}
           />
           <div className="absolute inset-0 bg-gradient-to-t from-tc-black via-transparent to-black/30" />
         </motion.div>
@@ -97,7 +107,7 @@ export default function HeroGallery({ locale }: { locale: string }) {
           className="mb-8"
         >
           <span className="rounded-full border border-tc-gold/30 px-4 py-1.5 text-xs uppercase tracking-[0.4em] text-tc-gold/70">
-            {slides[current].label}
+            {slide?.label}
           </span>
         </motion.div>
 

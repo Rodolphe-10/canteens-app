@@ -2,9 +2,10 @@
 
 import Image from 'next/image'
 import { useState } from 'react'
+import { useGallery } from '@/hooks/useGallery'
 import { mediaUrls } from '@/lib/media'
 
-const images = [
+const GAME_ROOM_FALLBACK = [
   mediaUrls.gameRoom.gameroom1,
   mediaUrls.gameRoom.gameroom2,
   mediaUrls.lounge.lounge1,
@@ -12,6 +13,7 @@ const images = [
 ]
 
 export default function GalleryStrip() {
+  const images = useGallery('game-room', GAME_ROOM_FALLBACK)
   const [errors, setErrors] = useState<Record<number, boolean>>({})
 
   return (

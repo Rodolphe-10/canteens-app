@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { useRef, useState } from 'react'
 import { ArrowRight } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { useGallery } from '@/hooks/useGallery'
 import InfiniteGalleryStrip from '@/components/ui/InfiniteGalleryStrip'
 import { mediaUrls } from '@/lib/media'
 
@@ -220,6 +221,10 @@ function SpaceSection({
 
 export default function NosEspacesView({ locale }: { locale: string }) {
   const isEn = locale === 'en'
+  const nosEspacesImages = useGallery(
+    'nos-espaces',
+    spaces.map((s) => s.image),
+  )
 
   return (
     <div className="min-h-screen bg-tc-black pt-32">
@@ -255,7 +260,7 @@ export default function NosEspacesView({ locale }: { locale: string }) {
             </h2>
           </div>
           <InfiniteGalleryStrip
-            images={spaces.map((s) => s.image)}
+            images={nosEspacesImages}
             altPrefix={isEn ? 'The Canteen\'s space' : 'Espace The Canteen\'s'}
             fallbackGradient="from-tc-navy to-tc-black"
           />
