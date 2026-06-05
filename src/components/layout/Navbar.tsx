@@ -129,11 +129,12 @@ export default function Navbar({ locale }: { locale: string }) {
             <Link href={`/${locale}`} className="flex shrink-0 items-center">
             <div className="relative h-16 w-56">
               <Image
+                key={isGameRoom ? 'gameroom' : 'restaurant'}
                 src={logoSrc}
                 alt={logoAlt}
                 fill
                 className={cn(
-                  'object-contain object-left transition-all duration-300',
+                  'object-contain object-left',
                   isGameRoom
                     ? 'drop-shadow-[0_0_8px_rgba(0,229,255,0.3)]'
                     : 'brightness-0 invert drop-shadow-[0_0_6px_rgba(212,175,55,0.2)]',

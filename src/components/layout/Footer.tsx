@@ -85,7 +85,7 @@ export default function Footer({ locale }: { locale: string }) {
             </h4>
             <div className="flex items-start gap-2 text-sm text-tc-cream/60">
               <MapPin size={14} className="mt-0.5 shrink-0 text-tc-gold" />
-              <div>
+              <div className="flex flex-col gap-4">
                 <span>
                   Dragage, à côté du Club Camtel
                   <br />
@@ -95,9 +95,9 @@ export default function Footer({ locale }: { locale: string }) {
                   href={MAPS_URL}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="mt-3 inline-flex items-center gap-1.5 rounded-full border border-tc-gold/30 bg-tc-gold/10 px-3 py-1.5 text-[11px] font-medium tracking-wide text-tc-gold transition-all hover:bg-tc-gold/20 hover:border-tc-gold/50"
+                  className="inline-flex w-fit items-center gap-1 rounded-md border border-white/10 bg-white/[0.03] px-2 py-0.5 text-[10px] font-normal tracking-wide text-tc-cream/50 transition-colors hover:border-tc-gold/20 hover:bg-tc-gold/5 hover:text-tc-gold/70"
                 >
-                  <Navigation size={11} />
+                  <Navigation size={10} className="opacity-60" />
                   {locale === 'fr' ? 'Itinéraire' : 'Get directions'}
                 </a>
               </div>

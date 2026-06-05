@@ -164,6 +164,76 @@ function useCountdown(targetIso: string | null) {
   return parts
 }
 
+function FlyerCardComponent({
+  event,
+  flyerUrl,
+  flyerIndex,
+  cardIndex,
+  locale,
+  isFr,
+  isPast,
+  onFlyerClick,
+}: {
+  event: { id: string; titre: string; type: string; date_event: string }
+  flyerUrl: string
+  flyerIndex: number
+  cardIndex: number
+  locale: string
+  isFr: boolean
+  isPast: boolean
+  onFlyerClick: (url: string) => void
+}) {
+  const typeStyle = getTypeStyle(event.type)
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 16 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: (cardIndex % 8) * 0.06 }}
+      className="group relative cursor-pointer overflow-hidden rounded-xl border border-white/5 bg-white/[0.03] transition-all duration-300 hover:border-white/15 hover:shadow-lg"
+      onClick={() => flyerUrl && onFlyerClick(flyerUrl)}
+    >
+      <div className="relative aspect-[3/4] w-full">
+        {flyerUrl ? (
+          <>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={flyerUrl}
+              alt={`${event.titre} – flyer ${flyerIndex + 1}`}
+              className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+            />
+            <div className="absolute inset-0 flex items-center justify-center bg-black/0 opacity-0 transition-all duration-300 group-hover:bg-black/40 group-hover:opacity-100">
+              <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>
+                <line x1="11" y1="8" x2="11" y2="14"/><line x1="8" y1="11" x2="14" y2="11"/>
+              </svg>
+            </div>
+          </>
+        ) : (
+          <div className={`flex h-full items-center justify-center ${typeStyle.placeholder}`}>
+            <span className="text-4xl font-bold text-white/20">{typeStyle.initial}</span>
+          </div>
+        )}
+
+        <span className={`absolute left-2 top-2 rounded-full border px-2 py-0.5 text-[9px] uppercase tracking-wider backdrop-blur-sm ${typeStyle.pill}`}>
+          {isFr ? typeStyle.labelFr : typeStyle.labelEn}
+        </span>
+
+        {isPast && (
+          <span className="absolute right-2 top-2 rounded-full bg-black/60 px-2 py-0.5 text-[9px] uppercase tracking-wider text-white/40 backdrop-blur-sm">
+            {isFr ? 'Passé' : 'Past'}
+          </span>
+        )}
+      </div>
+
+      <div className="p-3">
+        <p className="line-clamp-1 text-xs font-medium text-tc-cream">{event.titre}</p>
+        <p className="mt-0.5 text-[10px] text-white/35">{formatCardDate(event.date_event, locale)}</p>
+      </div>
+    </motion.div>
+  )
+}
+
 export default function EvenementsPage() {
   const params = useParams()
   const locale = (params?.locale as string) ?? 'fr'
@@ -524,7 +594,7 @@ export default function EvenementsPage() {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.2 }}
-            className="fixed inset-0 z-[300] flex items-center justify-center bg-black/92 p-4"
+            className="fixed inset-0 z-[300] flex cursor-pointer items-center justify-center bg-black/92 p-4"
             onClick={() => setLightbox(null)}
           >
             <Tooltip text={isFr ? 'Fermer' : 'Close'} position="bottom">
@@ -557,101 +627,5 @@ export default function EvenementsPage() {
         )}
       </AnimatePresence>
     </div>
-  )
-}
-
-// ─── Composant carte flyer ─────────────────────────────────────────────────────
-function FlyerCardComponent({
-  event,
-  flyerUrl,
-  flyerIndex,
-  cardIndex,
-  locale,
-  isFr,
-  isPast,
-  onFlyerClick,
-}: {
-  event: Event
-  flyerUrl: string
-  flyerIndex: number
-  cardIndex: number
-  locale: string
-  isFr: boolean
-  isPast: boolean
-  onFlyerClick: (src: string) => void
-}) {
-  const typeStyle = getTypeStyle(event.type)
-  const showBadge = flyerIndex === 0 // badge uniquement sur le 1er flyer de chaque event
-
-  return (
-    <motion.article
-      initial={{ opacity: 0, y: 16 }}
-      whileInView={{ opacity: isPast ? 0.75 : 1, y: 0 }}
-      viewport={{ once: true, margin: '-30px' }}
-      transition={{ duration: 0.35, delay: cardIndex * 0.05 }}
-      className="flex flex-col overflow-hidden rounded-2xl border border-white/5 bg-white/[0.03] transition hover:border-white/10"
-    >
-      {/* Image flyer */}
-      <div className="relative w-full overflow-hidden" style={{ aspectRatio: '3/4' }}>
-        {flyerUrl ? (
-          <>
-            <Tooltip
-              text={isFr ? 'Voir l\'image' : 'View image'}
-              position="top"
-              wrapperClassName="absolute inset-0 z-10 block"
-            >
-              <button
-                type="button"
-                onClick={() => onFlyerClick(flyerUrl)}
-                className="h-full w-full cursor-zoom-in"
-                aria-label={isFr ? 'Agrandir le flyer' : 'Enlarge flyer'}
-              />
-            </Tooltip>
-            <Image
-              src={flyerUrl}
-              alt={event.titre}
-              fill
-              className="object-cover transition-transform duration-500 hover:scale-105"
-              sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
-            />
-          </>
-        ) : (
-          <div className={cn('flex h-full w-full items-center justify-center font-serif text-4xl text-white/20', typeStyle.placeholder)}>
-            {typeStyle.initial}
-          </div>
-        )}
-        {/* Badge type — seulement sur le 1er flyer */}
-        {showBadge && (
-          <span className={cn(
-            'absolute left-2 top-2 z-20 rounded-full border px-2 py-0.5 text-[9px] uppercase tracking-wider backdrop-blur-sm',
-            isPast ? 'border-white/10 bg-black/50 text-white/40' : typeStyle.pill,
-          )}>
-            {isPast ? (isFr ? 'Terminé' : 'Ended') : (isFr ? typeStyle.labelFr : typeStyle.labelEn)}
-          </span>
-        )}
-      </div>
-
-      {/* Infos — uniquement sur le 1er flyer de l'event */}
-      {flyerIndex === 0 && (
-        <div className="flex flex-1 flex-col gap-1.5 p-3">
-          <h3 className="line-clamp-2 text-xs font-medium leading-snug text-tc-cream sm:text-sm">
-            {event.titre}
-          </h3>
-          {event.description && (
-            <p className="line-clamp-2 text-[10px] leading-relaxed text-white/35">
-              {event.description}
-            </p>
-          )}
-          <p className="mt-auto pt-2 text-[10px] text-white/25">
-            {capitalize(
-              new Date(event.date_event).toLocaleDateString(
-                locale === 'fr' ? 'fr-FR' : 'en-US',
-                { day: 'numeric', month: 'short', year: 'numeric' }
-              )
-            )}
-          </p>
-        </div>
-      )}
-    </motion.article>
   )
 }

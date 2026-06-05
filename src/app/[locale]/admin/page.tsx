@@ -821,14 +821,17 @@ export default function AdminDashboardPage() {
       }
 
       if (menuModal === 'edit' && editingItem) {
-        const result = await supabase.from('menu_items').update(payload).eq('id', editingItem.id).select()
-        console.log('[Menu UPDATE]', JSON.stringify(result))
+        const result = await supabase
+          .from('menu_items')
+          .update(payload)
+          .eq('id', editingItem.id)
+          .select()
         if (result.error) {
-          alert(`Erreur mise à jour : ${result.error.message} (code: ${result.error.code})`)
+          alert(`Erreur mise à jour : ${result.error.message}`)
           return
         }
         if (!result.data || result.data.length === 0) {
-          alert(`Aucune ligne modifiée — l'ID "${editingItem.id}" n'existe pas ou RLS bloque.`)
+          alert(`Aucune ligne modifiée — vérifier les permissions.`)
           return
         }
       } else {
@@ -839,10 +842,12 @@ export default function AdminDashboardPage() {
             .replace(/[^a-z0-9-]/g, '') +
           '-' +
           Date.now()
-        const result = await supabase.from('menu_items').insert({ id, ...payload }).select()
-        console.log('[Menu INSERT]', JSON.stringify(result))
+        const result = await supabase
+          .from('menu_items')
+          .insert({ id, ...payload })
+          .select()
         if (result.error) {
-          alert(`Erreur création : ${result.error.message} (code: ${result.error.code})`)
+          alert(`Erreur création : ${result.error.message}`)
           return
         }
       }
@@ -877,9 +882,13 @@ export default function AdminDashboardPage() {
     async (file: File, eventId: string, index: number): Promise<string> => {
       const ext = file.name.split('.').pop() ?? 'jpg'
       const path = `events/event_${eventId}_${index}.${ext}`
-      await supabase.storage
+      const { error } = await supabase.storage
         .from('media')
         .upload(path, file, { upsert: true, contentType: file.type })
+      if (error) {
+        alert(`Erreur upload flyer : ${error.message}`)
+        throw error
+      }
       const { data } = supabase.storage.from('media').getPublicUrl(path)
       return data.publicUrl
     },
@@ -936,13 +945,17 @@ export default function AdminDashboardPage() {
     const tempId = isEdit ? editingEvent!.id : crypto.randomUUID()
 
     try {
-      for (let i = 0; i < flyerFiles.length; i++) {
-        const url = await uploadFlyer(
-          flyerFiles[i],
-          tempId,
-          existingFlyers.length + i,
-        )
-        newFlyerUrls.push(url)
+      try {
+        for (let i = 0; i < flyerFiles.length; i++) {
+          const url = await uploadFlyer(
+            flyerFiles[i],
+            tempId,
+            existingFlyers.length + i,
+          )
+          newFlyerUrls.push(url)
+        }
+      } catch {
+        return
       }
 
       const allFlyers = [...existingFlyers, ...newFlyerUrls]
@@ -965,9 +978,22 @@ export default function AdminDashboardPage() {
       }
 
       if (isEdit) {
-        await supabase.from('events').update(payload).eq('id', editingEvent!.id)
+        const { error } = await supabase
+          .from('events')
+          .update(payload)
+          .eq('id', editingEvent!.id)
+        if (error) {
+          alert(`Erreur : ${error.message}`)
+          return
+        }
       } else {
-        await supabase.from('events').insert({ id: tempId, ...payload })
+        const { error } = await supabase
+          .from('events')
+          .insert({ id: tempId, ...payload })
+        if (error) {
+          alert(`Erreur : ${error.message}`)
+          return
+        }
       }
 
       await fetchEvents()

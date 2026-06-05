@@ -28,6 +28,11 @@ export default function InfiniteGalleryStrip({
   const isHovering = useRef(false)
   const [errors, setErrors] = useState<Record<number, boolean>>({})
   const [paused, setPaused] = useState(false)
+
+  // Reset errors quand images change pour éviter les flashs noirs
+  useEffect(() => {
+    setErrors({})
+  }, [images])
   const [lightboxSrc, setLightboxSrc] = useState<string | null>(null)
   const [lightboxIndex, setLightboxIndex] = useState<number>(-1)
 
