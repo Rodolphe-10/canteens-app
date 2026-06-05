@@ -47,7 +47,12 @@ export default function ChatBot({ locale }: { locale: string }) {
         body: JSON.stringify({ messages: newMessages }),
       })
 
-      if (!res.ok || !res.body) throw new Error('Erreur réseau')
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: `HTTP ${res.status}` }))
+        throw new Error(err.error ?? `HTTP ${res.status}`)
+      }
+
+      if (!res.body) throw new Error('Pas de réponse streaming')
 
       // Lecture du stream
       const reader = res.body.getReader()
@@ -66,13 +71,16 @@ export default function ChatBot({ locale }: { locale: string }) {
           { role: 'assistant', content: assistantText },
         ])
       }
-    } catch {
+    } catch (err) {
       setLoading(false)
+      const detail = err instanceof Error ? err.message : ''
       setMessages(prev => [
         ...prev,
-        { role: 'assistant', content: isEn
-          ? "I'm sorry, a technical error occurred. Please contact us on WhatsApp: +237 655 867 084"
-          : "Désolé, une erreur technique est survenue. Contactez-nous sur WhatsApp : +237 655 867 084" },
+        { role: 'assistant', content: detail
+            ? `⚠️ Erreur : ${detail}`
+            : isEn
+              ? "I'm sorry, a technical error occurred. Please contact us on WhatsApp: +237 655 867 084"
+              : "Désolé, une erreur technique est survenue. Contactez-nous sur WhatsApp : +237 655 867 084" },
       ])
     }
   }
@@ -84,17 +92,28 @@ export default function ChatBot({ locale }: { locale: string }) {
         type="button"
         onClick={() => setOpen(true)}
         initial={{ scale: 0, opacity: 0 }}
-        animate={{ scale: 1, opacity: 1 }}
-        transition={{ delay: 1.5, type: 'spring', stiffness: 260, damping: 20 }}
+        animate={{ scale: open ? 0 : 1, opacity: open ? 0 : 1 }}
+        transition={{ delay: open ? 0 : 1.5, type: 'spring', stiffness: 260, damping: 20 }}
         className={cn(
-          'fixed bottom-6 right-6 z-[100] flex items-center gap-2 rounded-full border border-tc-gold/40 bg-tc-black px-4 py-3 text-sm font-medium text-tc-cream shadow-[0_0_20px_rgba(212,175,55,0.2)] backdrop-blur-md transition-all hover:border-tc-gold/70 hover:shadow-[0_0_30px_rgba(212,175,55,0.35)]',
-          open && 'pointer-events-none opacity-0',
+          'fixed bottom-6 right-6 z-[100] flex items-center gap-2.5 rounded-full px-4 py-3 text-sm font-semibold text-white transition-all',
+          'bg-gradient-to-r from-violet-600 to-purple-500',
+          'shadow-[0_0_20px_rgba(139,92,246,0.5)] hover:shadow-[0_0_35px_rgba(139,92,246,0.75)]',
+          'hover:from-violet-500 hover:to-purple-400',
+          open && 'pointer-events-none',
         )}
         aria-label="Ouvrir l'assistant"
       >
-        <MessageCircle size={18} className="text-tc-gold" />
-        <span className="hidden sm:inline">
-          {isEn ? 'Assistant' : 'Assistant'}
+        <motion.div
+          animate={{ rotate: [0, -8, 8, 0] }}
+          transition={{ duration: 2.5, repeat: Infinity, repeatDelay: 3 }}
+        >
+          <MessageCircle size={18} />
+        </motion.div>
+        <span>{isEn ? 'Assistant' : 'Assistant'}</span>
+        {/* Point vert "en ligne" */}
+        <span className="absolute -right-0.5 -top-0.5 flex h-3 w-3">
+          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
+          <span className="relative inline-flex h-3 w-3 rounded-full bg-emerald-500" />
         </span>
       </motion.button>
 
