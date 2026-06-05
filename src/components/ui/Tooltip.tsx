@@ -1,7 +1,21 @@
 'use client'
 
-import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type PointerEvent, type ReactNode } from 'react'
 import { cn } from '@/lib/utils'
+
+function useCanHover() {
+  const [canHover, setCanHover] = useState(false)
+
+  useEffect(() => {
+    const mq = window.matchMedia('(hover: hover) and (pointer: fine)')
+    const update = () => setCanHover(mq.matches)
+    update()
+    mq.addEventListener('change', update)
+    return () => mq.removeEventListener('change', update)
+  }, [])
+
+  return canHover
+}
 
 export default function Tooltip({
   text,
@@ -16,13 +30,16 @@ export default function Tooltip({
   delay?: number
   wrapperClassName?: string
 }) {
+  const canHover = useCanHover()
   const [visible, setVisible] = useState(false)
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  const show = () => {
+  const show = (e: PointerEvent<HTMLSpanElement>) => {
+    if (e.pointerType !== 'mouse') return
     timer.current = setTimeout(() => setVisible(true), delay)
   }
-  const hide = () => {
+  const hide = (e: PointerEvent<HTMLSpanElement>) => {
+    if (e.pointerType !== 'mouse') return
     if (timer.current) clearTimeout(timer.current)
     setVisible(false)
   }
@@ -30,6 +47,10 @@ export default function Tooltip({
   useEffect(() => () => {
     if (timer.current) clearTimeout(timer.current)
   }, [])
+
+  if (!canHover) {
+    return <span className={cn('inline-flex', wrapperClassName)}>{children}</span>
+  }
 
   const positionClasses = {
     top: 'bottom-full left-1/2 -translate-x-1/2 mb-2',
@@ -41,8 +62,8 @@ export default function Tooltip({
   return (
     <span
       className={cn('relative inline-flex', wrapperClassName)}
-      onMouseEnter={show}
-      onMouseLeave={hide}
+      onPointerEnter={show}
+      onPointerLeave={hide}
     >
       {children}
       {visible && (
