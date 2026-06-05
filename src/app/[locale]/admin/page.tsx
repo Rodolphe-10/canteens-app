@@ -418,6 +418,19 @@ export default function AdminDashboardPage() {
   const galleryFileRef = useRef<HTMLInputElement>(null)
   const supabase = useMemo(() => createClient(), [])
 
+  const uploadToStorage = async (file: File, path: string): Promise<string> => {
+    const form = new FormData()
+    form.append('file', file)
+    form.append('path', path)
+    const res = await fetch('/api/upload', { method: 'POST', body: form })
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ error: 'Erreur upload' }))
+      throw new Error(err.error ?? 'Erreur upload')
+    }
+    const { url } = (await res.json()) as { url: string }
+    return url
+  }
+
   const newFlyerPreviews = useMemo(
     () => flyerFiles.map((f) => URL.createObjectURL(f)),
     [flyerFiles],
@@ -587,19 +600,18 @@ export default function AdminDashboardPage() {
     setUploadingGallery(true)
     const ext = file.name.split('.').pop() ?? 'jpg'
     const path = `galleries/${activeGallery}/${Date.now()}.${ext}`
-    const { error: storageError } = await supabase.storage
-      .from('media')
-      .upload(path, file, { upsert: false, contentType: file.type })
-    if (storageError) {
-      alert(`Erreur upload : ${storageError.message}`)
+    let imageUrl: string
+    try {
+      imageUrl = await uploadToStorage(file, path)
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Erreur upload')
       setUploadingGallery(false)
       return
     }
-    const { data: u } = supabase.storage.from('media').getPublicUrl(path)
     const nextPos = galleryPhotos.length
     const { error } = await supabase.from('gallery_photos').insert({
       gallery_id: activeGallery,
-      image_url: u.publicUrl,
+      image_url: imageUrl,
       position: nextPos,
     })
     if (error) {
@@ -668,18 +680,12 @@ export default function AdminDashboardPage() {
       if (gameImageFile) {
         const ext = gameImageFile.name.split('.').pop() ?? 'jpg'
         const path = `games/${editingGame?.id ?? 'new'}-${Date.now()}.${ext}`
-        const { error: storageError } = await supabase.storage
-          .from('media')
-          .upload(path, gameImageFile, {
-            upsert: false,
-            contentType: gameImageFile.type,
-          })
-        if (storageError) {
-          alert(`Erreur upload : ${storageError.message}`)
+        try {
+          imageUrl = await uploadToStorage(gameImageFile, path)
+        } catch (err) {
+          alert(err instanceof Error ? err.message : 'Erreur upload')
           return
         }
-        const { data: u } = supabase.storage.from('media').getPublicUrl(path)
-        imageUrl = u.publicUrl
       }
 
       const prices = (gameForm.pricesRaw ?? '')
@@ -793,20 +799,13 @@ export default function AdminDashboardPage() {
       let imageUrl = menuForm.image ?? ''
       if (menuImageFile) {
         const ext = menuImageFile.name.split('.').pop() ?? 'webp'
-        // Chemin unique avec timestamp pour éviter le cache CDN Supabase
         const path = `menu/${editingItem?.id ?? 'new'}-${Date.now()}.${ext}`
-        const { error: storageError } = await supabase.storage
-          .from('media')
-          .upload(path, menuImageFile, {
-            upsert: false,
-            contentType: menuImageFile.type,
-          })
-        if (storageError) {
-          alert(`Erreur upload image : ${storageError.message}`)
+        try {
+          imageUrl = await uploadToStorage(menuImageFile, path)
+        } catch (err) {
+          alert(err instanceof Error ? err.message : 'Erreur upload')
           return
         }
-        const { data: u } = supabase.storage.from('media').getPublicUrl(path)
-        imageUrl = u.publicUrl
       }
 
       const payload = {
@@ -878,22 +877,20 @@ export default function AdminDashboardPage() {
     )
   }
 
-  const uploadFlyer = useCallback(
-    async (file: File, eventId: string, index: number): Promise<string> => {
-      const ext = file.name.split('.').pop() ?? 'jpg'
-      const path = `events/event_${eventId}_${index}.${ext}`
-      const { error } = await supabase.storage
-        .from('media')
-        .upload(path, file, { upsert: true, contentType: file.type })
-      if (error) {
-        alert(`Erreur upload flyer : ${error.message}`)
-        throw error
-      }
-      const { data } = supabase.storage.from('media').getPublicUrl(path)
-      return data.publicUrl
-    },
-    [supabase],
-  )
+  const uploadFlyer = async (
+    file: File,
+    eventId: string,
+    index: number,
+  ): Promise<string> => {
+    const ext = file.name.split('.').pop() ?? 'jpg'
+    const path = `events/event_${eventId}_${index}.${ext}`
+    try {
+      return await uploadToStorage(file, path)
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Erreur upload flyer')
+      throw err
+    }
+  }
 
   const closeEventModal = () => {
     setEventModal(null)
