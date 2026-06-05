@@ -98,6 +98,7 @@ export default function InfiniteGalleryStrip({
   if (slides.length === 0) return null
 
   return (
+    <>
     <div
       className={cn('relative', className)}
       onMouseEnter={() => {
@@ -246,5 +247,6 @@ export default function InfiniteGalleryStrip({
         </motion.div>
       )}
     </AnimatePresence>
+    </>
   )
 }
