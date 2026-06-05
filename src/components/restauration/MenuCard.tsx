@@ -12,6 +12,7 @@ import {
   menuCardImageInnerClass,
   menuCardImageSquareClass,
 } from '@/lib/menu-image'
+import Tooltip from '@/components/ui/Tooltip'
 import { cn, formatPrice } from '@/lib/utils'
 import type { MenuItem } from '@/data/menu'
 
@@ -80,16 +81,22 @@ export default function MenuCard({
                     sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
                     onError={() => setImgError(true)}
                   />
-                  <button
-                    type="button"
-                    onClick={() => setIsLightboxOpen(true)}
-                    className="absolute inset-0 z-[1] cursor-zoom-in"
-                    aria-label={
-                      locale === 'fr' ? 'Agrandir la photo du plat' : 'Enlarge dish photo'
-                    }
+                  <Tooltip
+                    text={locale === 'fr' ? 'Voir l\'image' : 'View image'}
+                    position="top"
+                    wrapperClassName="absolute inset-0 z-[1] block"
                   >
-                    <span className="sr-only">{name}</span>
-                  </button>
+                    <button
+                      type="button"
+                      onClick={() => setIsLightboxOpen(true)}
+                      className="h-full w-full cursor-zoom-in"
+                      aria-label={
+                        locale === 'fr' ? 'Agrandir la photo du plat' : 'Enlarge dish photo'
+                      }
+                    >
+                      <span className="sr-only">{name}</span>
+                    </button>
+                  </Tooltip>
                 </>
               ) : (
                 <div className="flex h-full w-full items-center justify-center bg-white/[0.03]">
@@ -158,14 +165,19 @@ export default function MenuCard({
             className="fixed inset-0 z-[220] flex items-center justify-center bg-black/90 p-4"
             onClick={() => setIsLightboxOpen(false)}
           >
-            <button
-              type="button"
-              onClick={() => setIsLightboxOpen(false)}
-              className="absolute right-4 top-4 rounded-full bg-white/10 p-2 text-white transition-colors hover:bg-white/20"
-              aria-label={locale === 'fr' ? 'Fermer' : 'Close'}
+            <Tooltip
+              text={locale === 'fr' ? 'Fermer' : 'Close'}
+              position="bottom"
             >
-              <X size={20} />
-            </button>
+              <button
+                type="button"
+                onClick={() => setIsLightboxOpen(false)}
+                className="absolute right-4 top-4 rounded-full bg-white/10 p-2 text-white transition-colors hover:bg-white/20"
+                aria-label={locale === 'fr' ? 'Fermer' : 'Close'}
+              >
+                <X size={20} />
+              </button>
+            </Tooltip>
             <motion.div
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}

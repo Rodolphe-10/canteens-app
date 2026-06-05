@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { useParams } from 'next/navigation'
 import { AnimatePresence, motion } from 'framer-motion'
 import { Calendar, X } from 'lucide-react'
+import Tooltip from '@/components/ui/Tooltip'
 import { createClient } from '@/lib/supabase/client'
 import { cn } from '@/lib/utils'
 
@@ -526,14 +527,16 @@ export default function EvenementsPage() {
             className="fixed inset-0 z-[300] flex items-center justify-center bg-black/92 p-4"
             onClick={() => setLightbox(null)}
           >
-            <button
-              type="button"
-              onClick={() => setLightbox(null)}
-              className="absolute right-4 top-4 rounded-full bg-white/10 p-2 text-white transition hover:bg-white/20"
-              aria-label={isFr ? 'Fermer' : 'Close'}
-            >
-              <X size={20} />
-            </button>
+            <Tooltip text={isFr ? 'Fermer' : 'Close'} position="bottom">
+              <button
+                type="button"
+                onClick={() => setLightbox(null)}
+                className="absolute right-4 top-4 rounded-full bg-white/10 p-2 text-white transition hover:bg-white/20"
+                aria-label={isFr ? 'Fermer' : 'Close'}
+              >
+                <X size={20} />
+              </button>
+            </Tooltip>
             <motion.div
               initial={{ scale: 0.88, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
@@ -592,12 +595,18 @@ function FlyerCardComponent({
       <div className="relative w-full overflow-hidden" style={{ aspectRatio: '3/4' }}>
         {flyerUrl ? (
           <>
-            <button
-              type="button"
-              onClick={() => onFlyerClick(flyerUrl)}
-              className="absolute inset-0 z-10 cursor-zoom-in"
-              aria-label={isFr ? 'Agrandir le flyer' : 'Enlarge flyer'}
-            />
+            <Tooltip
+              text={isFr ? 'Voir l\'image' : 'View image'}
+              position="top"
+              wrapperClassName="absolute inset-0 z-10 block"
+            >
+              <button
+                type="button"
+                onClick={() => onFlyerClick(flyerUrl)}
+                className="h-full w-full cursor-zoom-in"
+                aria-label={isFr ? 'Agrandir le flyer' : 'Enlarge flyer'}
+              />
+            </Tooltip>
             <Image
               src={flyerUrl}
               alt={event.titre}

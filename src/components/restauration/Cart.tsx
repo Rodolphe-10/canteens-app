@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { useState } from 'react'
 import { X, Minus, Plus, Trash2, ShoppingBag, Phone, CheckCircle, ChevronRight } from 'lucide-react'
 import { useCartStore } from '@/stores/cart.store'
+import Tooltip from '@/components/ui/Tooltip'
 import { formatPrice } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
 import DeliveryForm, { DeliveryData, emptyDelivery } from './DeliveryForm'
@@ -179,13 +180,15 @@ export default function Cart({ locale }: { locale: string }) {
                   </span>
                 )}
               </div>
-              <button
-                type="button"
-                onClick={handleClose}
-                className="p-1 text-tc-cream/50 transition-colors hover:text-tc-cream"
-              >
-                <X size={22} />
-              </button>
+              <Tooltip text={isFr ? 'Fermer' : 'Close'} position="bottom">
+                <button
+                  type="button"
+                  onClick={handleClose}
+                  className="p-1 text-tc-cream/50 transition-colors hover:text-tc-cream"
+                >
+                  <X size={22} />
+                </button>
+              </Tooltip>
             </div>
 
             {/* Indicateur d'étapes */}
@@ -272,19 +275,34 @@ export default function Cart({ locale }: { locale: string }) {
                               <p className="mt-0.5 text-sm text-tc-gold">{formatPrice(item.price)}</p>
                             </div>
                             <div className="flex shrink-0 items-center gap-2">
-                              <button type="button" onClick={() => updateQty(item.id, item.quantity - 1)}
-                                className="flex h-7 w-7 items-center justify-center rounded-full border border-white/20 text-tc-cream/70 transition-colors hover:border-tc-gold hover:text-tc-gold">
-                                <Minus size={12} />
-                              </button>
+                              <Tooltip text={isFr ? 'Diminuer' : 'Decrease'} position="top">
+                                <button
+                                  type="button"
+                                  onClick={() => updateQty(item.id, item.quantity - 1)}
+                                  className="flex h-7 w-7 items-center justify-center rounded-full border border-white/20 text-tc-cream/70 transition-colors hover:border-tc-gold hover:text-tc-gold"
+                                >
+                                  <Minus size={12} />
+                                </button>
+                              </Tooltip>
                               <span className="w-5 text-center text-sm text-tc-cream">{item.quantity}</span>
-                              <button type="button" onClick={() => updateQty(item.id, item.quantity + 1)}
-                                className="flex h-7 w-7 items-center justify-center rounded-full border border-white/20 text-tc-cream/70 transition-colors hover:border-tc-gold hover:text-tc-gold">
-                                <Plus size={12} />
-                              </button>
-                              <button type="button" onClick={() => removeItem(item.id)}
-                                className="ml-1 text-tc-cream/30 transition-colors hover:text-red-400">
-                                <Trash2 size={14} />
-                              </button>
+                              <Tooltip text={isFr ? 'Augmenter' : 'Increase'} position="top">
+                                <button
+                                  type="button"
+                                  onClick={() => updateQty(item.id, item.quantity + 1)}
+                                  className="flex h-7 w-7 items-center justify-center rounded-full border border-white/20 text-tc-cream/70 transition-colors hover:border-tc-gold hover:text-tc-gold"
+                                >
+                                  <Plus size={12} />
+                                </button>
+                              </Tooltip>
+                              <Tooltip text={isFr ? 'Retirer' : 'Remove'} position="top">
+                                <button
+                                  type="button"
+                                  onClick={() => removeItem(item.id)}
+                                  className="ml-1 text-tc-cream/30 transition-colors hover:text-red-400"
+                                >
+                                  <Trash2 size={14} />
+                                </button>
+                              </Tooltip>
                             </div>
                           </motion.div>
                         ))}

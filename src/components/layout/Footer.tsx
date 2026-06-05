@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import { Phone, MapPin, Navigation } from 'lucide-react'
+import Tooltip from '@/components/ui/Tooltip'
 
 const InstagramIcon = () => (
   <svg viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
@@ -122,16 +123,17 @@ export default function Footer({ locale }: { locale: string }) {
             </h4>
             <div className="flex items-center gap-4 flex-wrap">
               {socialLinks.map((social) => (
-                <a
-                  key={social.label}
-                  href={social.href}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  aria-label={social.label}
-                  className={`text-tc-cream/50 transition-all duration-200 ${social.color} hover:scale-110`}
-                >
-                  {social.icon}
-                </a>
+                <Tooltip key={social.label} text={social.label} position="top">
+                  <a
+                    href={social.href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    aria-label={social.label}
+                    className={`text-tc-cream/50 transition-all duration-200 ${social.color} hover:scale-110`}
+                  >
+                    {social.icon}
+                  </a>
+                </Tooltip>
               ))}
             </div>
             <p className="text-xs text-tc-cream/30 mt-2">

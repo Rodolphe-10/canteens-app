@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import Image from 'next/image'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
+import Tooltip from '@/components/ui/Tooltip'
 import { cn } from '@/lib/utils'
 
 export interface InfiniteGalleryStripProps {
@@ -77,22 +78,26 @@ export default function InfiniteGalleryStrip({
     >
       {showArrows && (
         <>
-          <button
-            type="button"
-            onClick={() => nudge(-1)}
-            className="absolute left-0 top-1/2 z-10 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full border border-white/10 bg-black/50 text-tc-cream/70 backdrop-blur-md transition-colors hover:border-white/25 hover:text-tc-cream"
-            aria-label="Image précédente"
-          >
-            <ChevronLeft size={18} />
-          </button>
-          <button
-            type="button"
-            onClick={() => nudge(1)}
-            className="absolute right-0 top-1/2 z-10 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full border border-white/10 bg-black/50 text-tc-cream/70 backdrop-blur-md transition-colors hover:border-white/25 hover:text-tc-cream"
-            aria-label="Image suivante"
-          >
-            <ChevronRight size={18} />
-          </button>
+          <Tooltip text="Image précédente" position="right">
+            <button
+              type="button"
+              onClick={() => nudge(-1)}
+              className="absolute left-0 top-1/2 z-10 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full border border-white/10 bg-black/50 text-tc-cream/70 backdrop-blur-md transition-colors hover:border-white/25 hover:text-tc-cream"
+              aria-label="Image précédente"
+            >
+              <ChevronLeft size={18} />
+            </button>
+          </Tooltip>
+          <Tooltip text="Image suivante" position="left">
+            <button
+              type="button"
+              onClick={() => nudge(1)}
+              className="absolute right-0 top-1/2 z-10 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full border border-white/10 bg-black/50 text-tc-cream/70 backdrop-blur-md transition-colors hover:border-white/25 hover:text-tc-cream"
+              aria-label="Image suivante"
+            >
+              <ChevronRight size={18} />
+            </button>
+          </Tooltip>
         </>
       )}
 

@@ -5,6 +5,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { Menu, X, ChevronDown, ArrowLeft, ShoppingBag } from 'lucide-react'
+import Tooltip from '@/components/ui/Tooltip'
 import { cn } from '@/lib/utils'
 import { mediaUrls } from '@/lib/media'
 import { selectCartItemCount, useCartStore } from '@/stores/cart.store'
@@ -111,17 +112,19 @@ export default function Navbar({ locale }: { locale: string }) {
         <div className="flex h-20 items-center justify-between">
           <div className="flex min-w-0 items-center gap-3 sm:gap-4">
             {!isHomepage && (
-              <button
-                type="button"
-                onClick={handleBack}
-                aria-label={locale === 'fr' ? 'Retour' : 'Back'}
-                className="group inline-flex shrink-0 items-center justify-center rounded-full border border-white/10 bg-black/40 px-2.5 py-2 text-tc-cream/50 backdrop-blur-md transition-all duration-200 hover:border-white/25 hover:bg-black/60 hover:text-tc-cream/90"
-              >
-                <ArrowLeft
-                  size={12}
-                  className="transition-transform group-hover:-translate-x-0.5"
-                />
-              </button>
+              <Tooltip text={locale === 'fr' ? 'Retour' : 'Back'} position="bottom">
+                <button
+                  type="button"
+                  onClick={handleBack}
+                  aria-label={locale === 'fr' ? 'Retour' : 'Back'}
+                  className="group inline-flex shrink-0 items-center justify-center rounded-full border border-white/10 bg-black/40 px-2.5 py-2 text-tc-cream/50 backdrop-blur-md transition-all duration-200 hover:border-white/25 hover:bg-black/60 hover:text-tc-cream/90"
+                >
+                  <ArrowLeft
+                    size={12}
+                    className="transition-transform group-hover:-translate-x-0.5"
+                  />
+                </button>
+              </Tooltip>
             )}
             <Link href={`/${locale}`} className="flex shrink-0 items-center">
             <div className="relative h-16 w-56">
@@ -213,22 +216,27 @@ export default function Navbar({ locale }: { locale: string }) {
           </div>
 
           <div className="flex shrink-0 items-center gap-2 sm:gap-3">
-            <button
-              type="button"
-              onClick={toggleCart}
-              className="relative inline-flex items-center gap-1.5 p-2 text-tc-cream/70 transition-colors hover:text-tc-gold sm:gap-2"
-              aria-label={locale === 'fr' ? 'Ouvrir le panier' : 'Open cart'}
+            <Tooltip
+              text={locale === 'fr' ? 'Voir le panier' : 'View cart'}
+              position="bottom"
             >
-              <ShoppingBag size={20} className="shrink-0" />
-              <span className="hidden text-[11px] uppercase tracking-widest sm:inline">
-                {locale === 'fr' ? 'Panier' : 'Cart'}
-              </span>
-              {cartCount > 0 && (
-                <span className="absolute -right-0.5 -top-0.5 flex min-h-[18px] min-w-[18px] items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white">
-                  {cartCount > 99 ? '99+' : cartCount}
+              <button
+                type="button"
+                onClick={toggleCart}
+                className="relative inline-flex items-center gap-1.5 p-2 text-tc-cream/70 transition-colors hover:text-tc-gold sm:gap-2"
+                aria-label={locale === 'fr' ? 'Ouvrir le panier' : 'Open cart'}
+              >
+                <ShoppingBag size={20} className="shrink-0" />
+                <span className="hidden text-[11px] uppercase tracking-widest sm:inline">
+                  {locale === 'fr' ? 'Panier' : 'Cart'}
                 </span>
-              )}
-            </button>
+                {cartCount > 0 && (
+                  <span className="absolute -right-0.5 -top-0.5 flex min-h-[18px] min-w-[18px] items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white">
+                    {cartCount > 99 ? '99+' : cartCount}
+                  </span>
+                )}
+              </button>
+            </Tooltip>
             <Link
               href={newPath}
               className="rounded-full border border-white/10 px-2 py-1 text-[10px] font-medium uppercase tracking-wider text-tc-cream/50 transition-colors hover:border-tc-gold/30 hover:text-tc-gold lg:rounded lg:px-3 lg:py-1.5 lg:text-xs lg:tracking-widest"
@@ -240,14 +248,19 @@ export default function Navbar({ locale }: { locale: string }) {
             >
               {otherLocale.toUpperCase()}
             </Link>
-            <button
-              type="button"
-              onClick={() => setMenuOpen(!menuOpen)}
-              className="text-tc-cream lg:hidden"
-              aria-label="Menu"
+            <Tooltip
+              text={menuOpen ? (locale === 'fr' ? 'Fermer' : 'Close') : 'Menu'}
+              position="bottom"
             >
-              {menuOpen ? <X size={22} /> : <Menu size={22} />}
-            </button>
+              <button
+                type="button"
+                onClick={() => setMenuOpen(!menuOpen)}
+                className="text-tc-cream lg:hidden"
+                aria-label="Menu"
+              >
+                {menuOpen ? <X size={22} /> : <Menu size={22} />}
+              </button>
+            </Tooltip>
           </div>
         </div>
       </div>

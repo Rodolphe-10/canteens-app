@@ -3,6 +3,7 @@
 import { useEffect } from 'react'
 import Image from 'next/image'
 import { X } from 'lucide-react'
+import Tooltip from '@/components/ui/Tooltip'
 import { motion, AnimatePresence } from 'framer-motion'
 
 interface FlyerModalProps {
@@ -37,14 +38,16 @@ export default function FlyerModal({ src, alt, open, onClose }: FlyerModalProps)
           className="fixed inset-0 z-[200] flex items-center justify-center bg-black/90 p-4"
           onClick={onClose}
         >
-          <button
-            type="button"
-            onClick={onClose}
-            className="absolute right-4 top-4 rounded-full bg-white/10 p-2 text-white transition-colors hover:bg-white/20"
-            aria-label="Fermer"
-          >
-            <X size={20} />
-          </button>
+          <Tooltip text="Fermer" position="bottom">
+            <button
+              type="button"
+              onClick={onClose}
+              className="absolute right-4 top-4 rounded-full bg-white/10 p-2 text-white transition-colors hover:bg-white/20"
+              aria-label="Fermer"
+            >
+              <X size={20} />
+            </button>
+          </Tooltip>
           <motion.div
             initial={{ scale: 0.9, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}

@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import Image from 'next/image'
 import { Lock } from 'lucide-react'
 import { menuCategories } from '@/data/menu'
+import Tooltip from '@/components/ui/Tooltip'
 import { cn } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
 
@@ -1036,13 +1037,15 @@ export default function AdminDashboardPage() {
         </div>
         <div className="flex items-center gap-4">
           <span className="font-mono text-xs tabular-nums text-white/40">{clock}</span>
-          <button
-            type="button"
-            onClick={handleLogout}
-            className="text-xs text-white/30 transition-colors hover:text-red-400"
-          >
-            ⏻ Déconnexion
-          </button>
+          <Tooltip text="Se déconnecter" position="bottom">
+            <button
+              type="button"
+              onClick={handleLogout}
+              className="text-xs text-white/30 transition-colors hover:text-red-400"
+            >
+              ⏻ Déconnexion
+            </button>
+          </Tooltip>
         </div>
       </header>
 
@@ -1392,22 +1395,26 @@ export default function AdminDashboardPage() {
                           />
                         </div>
                         <div className="flex gap-2">
-                          <button
-                            type="button"
-                            onClick={() => openEditMenuItem(item)}
-                            className="text-white/40 transition hover:text-tc-gold"
-                            aria-label="Modifier"
-                          >
-                            ✏️
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => void deleteMenuItem(item.id)}
-                            className="text-white/40 transition hover:text-red-400"
-                            aria-label="Supprimer"
-                          >
-                            🗑️
-                          </button>
+                          <Tooltip text="Modifier" position="top">
+                            <button
+                              type="button"
+                              onClick={() => openEditMenuItem(item)}
+                              className="text-white/40 transition hover:text-tc-gold"
+                              aria-label="Modifier"
+                            >
+                              ✏️
+                            </button>
+                          </Tooltip>
+                          <Tooltip text="Supprimer" position="top">
+                            <button
+                              type="button"
+                              onClick={() => void deleteMenuItem(item.id)}
+                              className="text-white/40 transition hover:text-red-400"
+                              aria-label="Supprimer"
+                            >
+                              🗑️
+                            </button>
+                          </Tooltip>
                         </div>
                       </div>
                     </article>
@@ -1492,22 +1499,26 @@ export default function AdminDashboardPage() {
                             />
                           </div>
                           <div className="flex gap-2">
-                            <button
-                              type="button"
-                              onClick={() => openEditGame(game)}
-                              className="text-white/40 transition hover:text-tc-gold"
-                              aria-label="Modifier"
-                            >
-                              ✏️
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => void deleteGame(game.id)}
-                              className="text-white/40 transition hover:text-red-400"
-                              aria-label="Supprimer"
-                            >
-                              🗑️
-                            </button>
+                            <Tooltip text="Modifier" position="top">
+                              <button
+                                type="button"
+                                onClick={() => openEditGame(game)}
+                                className="text-white/40 transition hover:text-tc-gold"
+                                aria-label="Modifier"
+                              >
+                                ✏️
+                              </button>
+                            </Tooltip>
+                            <Tooltip text="Supprimer" position="top">
+                              <button
+                                type="button"
+                                onClick={() => void deleteGame(game.id)}
+                                className="text-white/40 transition hover:text-red-400"
+                                aria-label="Supprimer"
+                              >
+                                🗑️
+                              </button>
+                            </Tooltip>
                           </div>
                         </div>
                       </div>

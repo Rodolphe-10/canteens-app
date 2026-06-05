@@ -2,6 +2,7 @@
 
 import { useRouter } from 'next/navigation'
 import { ArrowLeft } from 'lucide-react'
+import Tooltip from '@/components/ui/Tooltip'
 interface BackButtonProps {
   locale: string
   fallbackHref?: string
@@ -57,16 +58,18 @@ export function PageBackNav({
   }
 
   return (
-    <button
-      type="button"
-      onClick={handleBack}
-      aria-label={locale === 'fr' ? 'Retour' : 'Back'}
-      className="group fixed left-4 top-24 z-40 inline-flex items-center justify-center rounded-full border border-white/10 bg-black/40 px-2.5 py-2 text-tc-cream/50 backdrop-blur-md transition-all duration-200 hover:border-white/25 hover:bg-black/60 hover:text-tc-cream/90 sm:left-6"
-    >
-      <ArrowLeft
-        size={12}
-        className="transition-transform duration-200 group-hover:-translate-x-0.5"
-      />
-    </button>
+    <Tooltip text={locale === 'fr' ? 'Retour' : 'Back'} position="right">
+      <button
+        type="button"
+        onClick={handleBack}
+        aria-label={locale === 'fr' ? 'Retour' : 'Back'}
+        className="group fixed left-4 top-24 z-40 inline-flex items-center justify-center rounded-full border border-white/10 bg-black/40 px-2.5 py-2 text-tc-cream/50 backdrop-blur-md transition-all duration-200 hover:border-white/25 hover:bg-black/60 hover:text-tc-cream/90 sm:left-6"
+      >
+        <ArrowLeft
+          size={12}
+          className="transition-transform duration-200 group-hover:-translate-x-0.5"
+        />
+      </button>
+    </Tooltip>
   )
 }
