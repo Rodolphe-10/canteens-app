@@ -417,4 +417,23 @@ export default function Cart({ locale }: { locale: string }) {
                 </div>
                 <button
                   type="button"
-       
+                  onClick={() => setStep('delivery')}
+                  className="flex w-full items-center justify-center gap-2 bg-tc-gold py-3.5 text-sm font-bold uppercase tracking-widest text-tc-black transition-all hover:bg-tc-gold/90"
+                >
+                  {isFr ? 'Passer à la livraison →' : 'Proceed to delivery →'}
+                </button>
+                <a
+                  href="tel:+237655867084"
+                  className="flex items-center justify-center gap-2 border border-white/20 py-2.5 px-6 text-sm tracking-wider text-tc-cream/50 transition-colors hover:border-tc-gold hover:text-tc-gold"
+                >
+                  <Phone size={13} />
+                  {isFr ? 'Commander par téléphone' : 'Order by phone'}
+                </a>
+              </div>
+            )}
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </>
+  )
+}
