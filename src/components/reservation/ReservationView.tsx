@@ -56,7 +56,7 @@ function getContent(locale: string): {
             'Pour dîner au restaurant, privatiser le lounge ou organiser un événement — brunch, anniversaire, réunion professionnelle.',
           infos: [
             '80 couverts en salle',
-            "Ouvert tous les jours jusqu'à 6H",
+            "Ouvert jusqu'à 2H30 (lun–jeu & dim), 4H (ven–sam)",
             'Dragage, à côté du Club Camtel',
           ],
           steps: [
@@ -112,7 +112,7 @@ function getContent(locale: string): {
           'For dining at the restaurant, privatizing the lounge or organizing an event — brunch, birthday, business meeting.',
         infos: [
           '80 seats',
-          'Open every day until 6AM',
+          'Open until 2:30 AM (Mon–Thu & Sun), 4 AM (Fri–Sat)',
           'Dragage, next to Club Camtel',
         ],
         steps: [

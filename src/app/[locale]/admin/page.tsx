@@ -8,14 +8,14 @@ import Tooltip from '@/components/ui/Tooltip'
 import { cn } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
 
-const ROLES = {
-  admin: { pin: '2024', label: 'Administrateur', color: 'text-tc-gold' },
-  chef: { pin: '5678', label: 'Chef de Salle', color: 'text-blue-400' },
-  cm: { pin: '1919', label: 'Community Manager', color: 'text-purple-400' },
-  livreur: { pin: '3456', label: 'Chef Livreur', color: 'text-orange-400' },
-} as const
+const ROLE_STYLES: Record<string, { label: string; color: string }> = {
+  admin: { label: 'Administrateur', color: 'text-tc-gold' },
+  chef: { label: 'Chef de Salle', color: 'text-blue-400' },
+  cm: { label: 'Community Manager', color: 'text-purple-400' },
+  livreur: { label: 'Chef Livreur', color: 'text-orange-400' },
+}
 
-type Role = keyof typeof ROLES
+type Role = 'admin' | 'chef' | 'cm' | 'livreur'
 const ACCESS_KEY = 'tc_staff_auth_role'
 
 type Tab =
@@ -445,7 +445,12 @@ function PinDots({
   error?: boolean
 }) {
   return (
-    <div className="mt-6 flex items-center justify-center gap-3">
+    <div
+      className={cn(
+        'mt-6 flex items-center justify-center gap-3',
+        error && 'animate-shake',
+      )}
+    >
       {Array.from({ length: max }).map((_, i) => (
         <span
           key={i}
@@ -506,6 +511,10 @@ function OrderStatusProgress({ current }: { current: OrderStatus }) {
 
 export default function AdminDashboardPage() {
   const [role, setRole] = useState<Role | null>(null)
+  const [staffNom, setStaffNom] = useState('')
+  const [staffList, setStaffList] = useState<{ id: string; nom: string }[]>([])
+  const [loadingStaffList, setLoadingStaffList] = useState(true)
+  const [selectedNom, setSelectedNom] = useState<string | null>(null)
   const [isAuthed, setIsAuthed] = useState(false)
   const [pin, setPin] = useState('')
   const [pinError, setPinError] = useState(false)
@@ -616,14 +625,45 @@ export default function AdminDashboardPage() {
     [role],
   )
 
+  const fetchStaffList = useCallback(async () => {
+    const { data } = await supabase
+      .from('staff_profiles')
+      .select('id, nom')
+      .eq('actif', true)
+      .order('nom')
+    setStaffList(data ?? [])
+    setLoadingStaffList(false)
+  }, [supabase])
+
   useEffect(() => {
     const stored = sessionStorage.getItem(ACCESS_KEY)
+    const storedNom = sessionStorage.getItem('tc_staff_nom')
+    if (storedNom) setStaffNom(storedNom)
     if (isRole(stored)) {
       setRole(stored)
       setIsAuthed(true)
       setTab(getInitialTab(stored))
     }
   }, [])
+
+  useEffect(() => {
+    void fetchStaffList()
+
+    const channel = supabase
+      .channel('staff_profiles_live')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'staff_profiles' },
+        () => {
+          void fetchStaffList()
+        },
+      )
+      .subscribe()
+
+    return () => {
+      void supabase.removeChannel(channel)
+    }
+  }, [supabase, fetchStaffList])
 
   useEffect(() => {
     if (!availableTabs.includes(tab)) {
@@ -1394,15 +1434,23 @@ export default function AdminDashboardPage() {
     )
   }
 
-  const submitPin = useCallback((value: string) => {
-    const matched = (
-      Object.entries(ROLES) as [Role, (typeof ROLES)[Role]][]
-    ).find(([, r]) => r.pin === value)
+  const submitPin = useCallback(async (value: string) => {
+    if (!selectedNom) return
 
-    if (matched) {
-      const [matchedRole] = matched
+    const { data } = await supabase
+      .from('staff_profiles')
+      .select('*')
+      .eq('pin', value)
+      .eq('nom', selectedNom)
+      .eq('actif', true)
+      .single()
+
+    if (data && isRole(data.role)) {
+      const matchedRole = data.role
       sessionStorage.setItem(ACCESS_KEY, matchedRole)
+      sessionStorage.setItem('tc_staff_nom', data.nom)
       setRole(matchedRole)
+      setStaffNom(data.nom)
       setIsAuthed(true)
       setTab(getInitialTab(matchedRole))
       setPin('')
@@ -1415,11 +1463,11 @@ export default function AdminDashboardPage() {
       setPin('')
       setPinError(false)
     }, 500)
-  }, [])
+  }, [selectedNom, supabase])
 
   useEffect(() => {
-    if (pin.length === 4) submitPin(pin)
-  }, [pin, submitPin])
+    if (selectedNom && pin.length === 4) void submitPin(pin)
+  }, [pin, selectedNom, submitPin])
 
   const appendDigit = (digit: string) => {
     if (pin.length >= 4 || pinError) return
@@ -1433,8 +1481,11 @@ export default function AdminDashboardPage() {
 
   const handleLogout = () => {
     sessionStorage.removeItem(ACCESS_KEY)
+    sessionStorage.removeItem('tc_staff_nom')
     setIsAuthed(false)
     setRole(null)
+    setStaffNom('')
+    setSelectedNom(null)
     setPin('')
     setPinError(false)
   }
@@ -1470,54 +1521,97 @@ export default function AdminDashboardPage() {
           STAFF LOGIN
         </p>
 
-        <div className="mt-3 flex flex-wrap justify-center gap-2">
-          {(Object.values(ROLES) as (typeof ROLES)[Role][]).map((r) => (
-            <span
-              key={r.label}
-              className="rounded-full border border-white/10 px-2.5 py-1 text-[9px] uppercase tracking-widest text-white/20"
-            >
-              {r.label}
-            </span>
-          ))}
-        </div>
+        {!selectedNom ? (
+          <>
+            <p className="mb-4 mt-8 text-xs uppercase tracking-widest text-white/40">
+              Qui êtes-vous ?
+            </p>
 
-        <PinDots length={pin.length} error={pinError} />
-
-        <Lock className="mt-12 h-12 w-12 text-white/20" strokeWidth={1.25} aria-hidden />
-
-        <div className="mt-10 flex flex-col gap-3">
-          {KEYPAD_ROWS.map((row) => (
-            <div key={row.join('-')} className="flex justify-center gap-3">
-              {row.map((digit) => (
-                <button
-                  key={digit}
-                  type="button"
-                  onClick={() => appendDigit(digit)}
-                  className="flex h-16 w-16 cursor-pointer items-center justify-center rounded-xl border border-white/10 bg-white/[0.03] text-lg font-light text-tc-cream transition-colors hover:bg-white/[0.07]"
-                >
-                  {digit}
-                </button>
-              ))}
-            </div>
-          ))}
-          <div className="flex justify-center">
+            {loadingStaffList ? (
+              <div className="flex h-32 items-center justify-center">
+                <div className="h-8 w-8 animate-spin rounded-full border-2 border-white/10 border-t-tc-gold" />
+              </div>
+            ) : staffList.length === 0 ? (
+              <p className="text-sm text-white/30">Aucun profil actif disponible.</p>
+            ) : (
+              <div className="max-h-64 w-full max-w-sm overflow-y-auto [scrollbar-width:thin] [scrollbar-color:rgba(255,255,255,0.15)_transparent]">
+                <div className="flex flex-col gap-2">
+                  {staffList.map((profile) => (
+                    <button
+                      key={profile.id}
+                      type="button"
+                      onClick={() => {
+                        setSelectedNom(profile.nom)
+                        setPin('')
+                        setPinError(false)
+                      }}
+                      className="w-full rounded-xl border border-white/5 bg-white/[0.03] px-6 py-3.5 text-left text-sm text-white/50 transition hover:border-white/15 hover:bg-white/[0.06] hover:text-tc-cream"
+                    >
+                      {profile.nom}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </>
+        ) : (
+          <>
             <button
               type="button"
-              onClick={() => appendDigit('0')}
-              className="flex h-16 w-16 cursor-pointer items-center justify-center rounded-xl border border-white/10 bg-white/[0.03] text-lg font-light text-tc-cream transition-colors hover:bg-white/[0.07]"
+              onClick={() => {
+                setSelectedNom(null)
+                setPin('')
+                setPinError(false)
+              }}
+              className="mb-6 flex items-center gap-1 text-xs text-white/30 transition-colors hover:text-white/60"
             >
-              0
+              ← {selectedNom}
             </button>
-          </div>
-        </div>
 
-        <button
-          type="button"
-          onClick={clearPin}
-          className="mt-8 text-xs text-white/20 transition-colors hover:text-white/40"
-        >
-          ← Effacer
-        </button>
+            <p className="mb-1 text-lg font-medium text-tc-cream">
+              Bonjour {selectedNom}
+            </p>
+            <p className="mb-4 text-xs text-white/30">Entrez votre code PIN</p>
+
+            <PinDots length={pin.length} error={pinError} />
+
+            <Lock className="mt-12 h-12 w-12 text-white/20" strokeWidth={1.25} aria-hidden />
+
+            <div className="mt-10 flex flex-col gap-3">
+              {KEYPAD_ROWS.map((row) => (
+                <div key={row.join('-')} className="flex justify-center gap-3">
+                  {row.map((digit) => (
+                    <button
+                      key={digit}
+                      type="button"
+                      onClick={() => appendDigit(digit)}
+                      className="flex h-16 w-16 cursor-pointer items-center justify-center rounded-xl border border-white/10 bg-white/[0.03] text-lg font-light text-tc-cream transition-colors hover:bg-white/[0.07]"
+                    >
+                      {digit}
+                    </button>
+                  ))}
+                </div>
+              ))}
+              <div className="flex justify-center">
+                <button
+                  type="button"
+                  onClick={() => appendDigit('0')}
+                  className="flex h-16 w-16 cursor-pointer items-center justify-center rounded-xl border border-white/10 bg-white/[0.03] text-lg font-light text-tc-cream transition-colors hover:bg-white/[0.07]"
+                >
+                  0
+                </button>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={clearPin}
+              className="mt-8 text-xs text-white/20 transition-colors hover:text-white/40"
+            >
+              ← Effacer
+            </button>
+          </>
+        )}
       </div>
     )
   }
@@ -1530,9 +1624,12 @@ export default function AdminDashboardPage() {
             THE CANTEEN&apos;S · DASHBOARD
           </p>
           {role ? (
-            <span className={cn('text-xs font-medium', ROLES[role].color)}>
-              {ROLES[role].label}
-            </span>
+            <div className="flex flex-col">
+              <span className={cn('text-xs font-medium', ROLE_STYLES[role ?? 'cm'].color)}>
+                {staffNom || ROLE_STYLES[role ?? 'cm'].label}
+              </span>
+              <span className="text-[10px] text-white/25">{ROLE_STYLES[role ?? 'cm'].label}</span>
+            </div>
           ) : null}
         </div>
         <div className="flex items-center gap-4">

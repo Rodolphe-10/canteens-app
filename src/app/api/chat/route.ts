@@ -23,7 +23,7 @@ INFORMATIONS GÉNÉRALES :
 - Adresse : Quartier Dragage, à côté du club Camtel, Yaoundé, Cameroun
 - Téléphone / WhatsApp : +237 655 867 084
 - WiFi disponible pour les clients
-- Horaires : ouverture à 11h30 tous les jours. Fermeture à 2h30 en semaine, après 4h le weekend
+- Horaires : ouverture à 11h30 tous les jours. Fermeture à 2h30 du lundi au jeudi et le dimanche, jusqu'à 4h le vendredi et samedi
 - Réservations en ligne via le site, section "Réservation"
 
 The Canteen's comprend 4 espaces :

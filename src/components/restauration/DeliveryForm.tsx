@@ -1,6 +1,7 @@
 'use client'
 
 import React from 'react'
+import Image from 'next/image'
 import { useState } from 'react'
 import { ChevronDown, MapPin, Clock, CreditCard, User, Phone, AlertCircle } from 'lucide-react'
 import { motion } from 'framer-motion'
@@ -52,59 +53,23 @@ const CashIcon = () => (
 )
 
 const OrangeMoneyIcon = () => (
-  <svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg" className="h-8 w-8">
-    <rect width="40" height="40" rx="6" fill="#FF6600"/>
-    <text
-      x="20"
-      y="15"
-      textAnchor="middle"
-      fill="white"
-      fontSize="8"
-      fontWeight="bold"
-      fontFamily="Arial, sans-serif"
-    >
-      ORANGE
-    </text>
-    <text
-      x="20"
-      y="26"
-      textAnchor="middle"
-      fill="white"
-      fontSize="10"
-      fontWeight="900"
-      fontFamily="Arial, sans-serif"
-    >
-      MONEY
-    </text>
-  </svg>
+  <Image
+    src="/payments/orange-money.png"
+    alt="Orange Money"
+    width={40}
+    height={40}
+    className="h-10 w-10 rounded-md object-contain"
+  />
 )
 
 const MTNMoMoIcon = () => (
-  <svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg" className="h-8 w-8">
-    <rect width="40" height="40" rx="6" fill="#FFCC00"/>
-    <text
-      x="20"
-      y="16"
-      textAnchor="middle"
-      fill="#1a1a1a"
-      fontSize="11"
-      fontWeight="900"
-      fontFamily="Arial, sans-serif"
-    >
-      MTN
-    </text>
-    <text
-      x="20"
-      y="27"
-      textAnchor="middle"
-      fill="#1a1a1a"
-      fontSize="8"
-      fontWeight="bold"
-      fontFamily="Arial, sans-serif"
-    >
-      MoMo
-    </text>
-  </svg>
+  <Image
+    src="/payments/mtn-momo.png"
+    alt="MTN Mobile Money"
+    width={40}
+    height={40}
+    className="h-10 w-10 rounded-md object-contain"
+  />
 )
 
 interface PaiementOption {

@@ -35,6 +35,7 @@ const config: Config = {
         'slide-in-left': 'slideInLeft 0.5s ease-out',
         'glow-pulse': 'glowPulse 2s ease-in-out infinite',
         scroll: 'scroll 30s linear infinite',
+        shake: 'shake 0.45s ease-in-out',
       },
       keyframes: {
         fadeIn: {
@@ -56,6 +57,11 @@ const config: Config = {
         scroll: {
           '0%': { transform: 'translateX(0)' },
           '100%': { transform: 'translateX(-50%)' },
+        },
+        shake: {
+          '0%, 100%': { transform: 'translateX(0)' },
+          '20%, 60%': { transform: 'translateX(-6px)' },
+          '40%, 80%': { transform: 'translateX(6px)' },
         },
       },
       backgroundImage: {

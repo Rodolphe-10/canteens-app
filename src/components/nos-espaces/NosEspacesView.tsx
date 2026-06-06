@@ -29,8 +29,8 @@ const spaces = [
     border: 'border-red-500/20',
     glow: 'rgba(220,38,38,0.1)',
     href: '/restauration/restaurant',
-    details: ['80 couverts', "Ouvert jusqu'à 6H", 'Privatisation possible'],
-    detailsEn: ['80 seats', 'Open until 6AM', 'Private hire available'],
+    details: ['80 couverts', "Ouvert jusqu'à 2H30 (lun–jeu & dim), 4H (ven–sam)", 'Privatisation possible'],
+    detailsEn: ['80 seats', 'Open until 2:30 AM (Mon–Thu & Sun), 4 AM (Fri–Sat)', 'Private hire available'],
     imagePosition: 'left' as const,
   },
   {

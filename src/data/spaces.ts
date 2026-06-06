@@ -28,7 +28,7 @@ export const restaurantConfig: SpaceConfig = {
     'Carte des vins sélectionnée',
     'Ambiance feutrée le soir',
     'Événements & privatisation',
-    "Ouvert jusqu'à 6H du matin",
+    "Ouvert jusqu'à 2H30 (lun–jeu & dim), 4H (ven–sam)",
     'Réservation recommandée',
   ],
   featuresEn: [
@@ -38,7 +38,7 @@ export const restaurantConfig: SpaceConfig = {
     'Curated wine list',
     'Intimate evening atmosphere',
     'Events & private hire',
-    'Open until 6AM',
+    'Open until 2:30 AM (Mon–Thu & Sun), 4 AM (Fri–Sat)',
     'Reservation recommended',
   ],
   images: [mediaUrls.restaurant.restaurant],
@@ -82,7 +82,7 @@ export const loungeConfig: SpaceConfig = {
     'Écran TV grand format',
     'Soirées DJ & karaoké',
     'Ambiance lounge luxueuse',
-    "Ouvert jusqu'à 6H du matin",
+    "Ouvert jusqu'à 2H30 (lun–jeu & dim), 4H (ven–sam)",
   ],
   featuresEn: [
     'Black marble bar',
@@ -92,7 +92,7 @@ export const loungeConfig: SpaceConfig = {
     'Large format TV screen',
     'DJ nights & karaoke',
     'Luxurious lounge atmosphere',
-    'Open until 6AM',
+    'Open until 2:30 AM (Mon–Thu & Sun), 4 AM (Fri–Sat)',
   ],
   images: [
     mediaUrls.lounge.lounge1,

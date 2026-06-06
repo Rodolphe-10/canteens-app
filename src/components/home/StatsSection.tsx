@@ -61,10 +61,10 @@ export default function StatsSection({ locale }: { locale: string }) {
       icon: '🎮',
     },
     {
-      value: 6,
-      suffix: 'H',
-      labelFr: "ouvert jusqu'à",
-      labelEn: 'open until',
+      textFr: '2H30 / 4H',
+      textEn: '2:30 / 4 AM',
+      labelFr: 'lun–jeu & dim · ven–sam',
+      labelEn: 'Mon–Thu & Sun · Fri–Sat',
       icon: '🌙',
     },
   ]
@@ -84,8 +84,10 @@ export default function StatsSection({ locale }: { locale: string }) {
             className="text-center"
           >
             <div className="mb-3 text-3xl">{stat.icon}</div>
-            <div className="mb-2 font-serif text-4xl font-bold text-gradient-gold sm:text-5xl">
-              <AnimatedNumber target={stat.value} suffix={stat.suffix} />
+            <div className="mb-2 font-serif text-3xl font-bold text-gradient-gold sm:text-4xl">
+              {'textFr' in stat
+                ? (locale === 'fr' ? stat.textFr : stat.textEn)
+                : <AnimatedNumber target={stat.value} suffix={stat.suffix} />}
             </div>
             <p className="text-xs uppercase tracking-widest text-tc-cream/40">
               {locale === 'fr' ? stat.labelFr : stat.labelEn}

@@ -112,9 +112,9 @@ const events = [
     taglineFr: 'La nuit commence au Lounge',
     taglineEn: 'The night starts at the Lounge',
     descFr:
-      "Soirées DJ, sessions karaoké, afterwork… Le Lounge The Canteen's accueille régulièrement des événements festifs. Ouvert jusqu'à 6H du matin.",
+      "Soirées DJ, sessions karaoké, afterwork… Le Lounge The Canteen's accueille régulièrement des événements festifs. Ouvert jusqu'à 2H30 (lun–jeu & dim), 4H (ven–sam).",
     descEn:
-      "DJ nights, karaoke sessions, afterwork… The Canteen's Lounge regularly hosts festive events. Open until 6AM.",
+      "DJ nights, karaoke sessions, afterwork… The Canteen's Lounge regularly hosts festive events. Open until 2:30 AM (Mon–Thu & Sun), 4 AM (Fri–Sat).",
     schedule: 'Événements réguliers',
     scheduleEn: 'Regular events',
     flyer: mediaUrls.lounge.lounge1,

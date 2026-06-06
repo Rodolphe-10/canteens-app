@@ -94,8 +94,12 @@ export default function ContactRestaurantPage() {
               <div className="flex flex-col gap-3">
                 {[
                   {
-                    day: isEn ? 'Every day' : 'Tous les jours',
-                    hours: isEn ? 'Until 6AM' : "Jusqu'à 6H du matin",
+                    day: isEn ? 'Mon – Thu & Sun' : 'Lun – Jeu & Dim',
+                    hours: isEn ? 'Until 2:30 AM' : "Jusqu'à 2H30",
+                  },
+                  {
+                    day: isEn ? 'Fri – Sat' : 'Ven – Sam',
+                    hours: isEn ? 'Until 4 AM' : "Jusqu'à 4H",
                   },
                   {
                     day: isEn ? 'Sunday brunch' : 'Brunch du dimanche',
