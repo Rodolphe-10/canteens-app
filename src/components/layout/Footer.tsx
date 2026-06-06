@@ -54,7 +54,7 @@ const socialLinks = [
   },
   {
     label: 'WhatsApp',
-    href: 'https://wa.me/237655867084',
+    href: 'https://api.whatsapp.com/send?phone=237655867084',
     icon: <WhatsAppIcon />,
     color: 'hover:text-green-400',
   },
@@ -143,14 +143,4 @@ export default function Footer({ locale }: { locale: string }) {
         </div>
 
         {/* Bottom bar */}
-        <div className="border-t border-white/5 pt-6 flex flex-col sm:flex-row items-center justify-between gap-2">
-          <p className="text-xs text-tc-cream/25">
-            © {new Date().getFullYear()} The Canteen&apos;s.{' '}
-            {locale === 'fr' ? 'Tous droits réservés.' : 'All rights reserved.'}
-          </p>
-          <p className="text-xs text-tc-cream/20">Yaoundé, Cameroun</p>
-        </div>
-      </div>
-    </footer>
-  )
-}
+        <div clas

@@ -375,7 +375,7 @@ export default function EvenementsView({ locale }: { locale: string }) {
               {isEn ? 'Book now' : 'Réserver'}
             </Link>
             <a
-              href="https://wa.me/237655867084"
+              href="https://api.whatsapp.com/send?phone=237655867084"
               target="_blank"
               rel="noopener noreferrer"
               className="border border-white/20 px-8 py-4 text-sm font-bold uppercase tracking-widest text-tc-cream/70 transition-all hover:border-white/50"

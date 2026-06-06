@@ -191,7 +191,7 @@ export default function PacksSection({ locale }: { locale: string }) {
           </p>
           <div className="flex flex-col justify-center gap-4 sm:flex-row">
             <a
-              href="https://wa.me/237677138318"
+              href="https://api.whatsapp.com/send?phone=237677138318"
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center justify-center gap-2 bg-green-600 px-8 py-3.5 text-sm font-bold uppercase tracking-wider text-white transition-colors hover:bg-green-500"

@@ -249,7 +249,7 @@ export default function ReservationView({
                 </div>
                 <div className="mt-auto flex flex-col gap-3">
                   <a
-                    href={`https://wa.me/${section.whatsapp.number}`}
+                    href={`https://api.whatsapp.com/send?phone=${section.whatsapp.number}`}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="flex items-center justify-center gap-2 bg-green-600 px-6 py-3.5 text-sm font-bold uppercase tracking-wider text-white transition-colors hover:bg-green-500"

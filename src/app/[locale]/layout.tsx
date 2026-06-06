@@ -3,8 +3,6 @@ import { notFound } from 'next/navigation'
 import { routing } from '@/i18n/routing'
 import { NextIntlClientProvider } from 'next-intl'
 import { getMessages, setRequestLocale } from 'next-intl/server'
-import '../globals.css'
-
 export const metadata: Metadata = {
   title: "The Canteen's — Restaurant · Bar · Lounge · Game Room",
   description:
@@ -33,10 +31,6 @@ export default async function LocaleLayout({
   const messages = await getMessages()
 
   return (
-    <html lang={locale}>
-      <body className="bg-tc-black text-tc-cream antialiased">
-        <NextIntlClientProvider messages={messages}>{children}</NextIntlClientProvider>
-      </body>
-    </html>
+    <NextIntlClientProvider messages={messages}>{children}</NextIntlClientProvider>
   )
 }

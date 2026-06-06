@@ -64,6 +64,13 @@ const TYPE_STYLES: Record<
     labelEn: 'Special',
     initial: '★',
   },
+  live: {
+    pill: 'bg-pink-500/20 text-pink-300 border-pink-500/30',
+    placeholder: 'bg-pink-950/60',
+    labelFr: 'Live',
+    labelEn: 'Live',
+    initial: 'L',
+  },
 }
 
 const DEFAULT_TYPE_STYLE = {
@@ -75,7 +82,14 @@ const DEFAULT_TYPE_STYLE = {
 }
 
 function getTypeStyle(type: string) {
-  return TYPE_STYLES[type] ?? DEFAULT_TYPE_STYLE
+  const known = TYPE_STYLES[type]
+  if (known) return known
+  return {
+    ...DEFAULT_TYPE_STYLE,
+    labelFr: type,
+    labelEn: type,
+    initial: type.charAt(0).toUpperCase(),
+  }
 }
 
 function capitalize(str: string) {
@@ -297,6 +311,7 @@ export default function EvenementsPage() {
     : false
 
   const countdown = useCountdown(featuredIsFuture ? featuredEvent!.date_event : null)
+  const countdownTarget = featuredIsFuture ? featuredEvent!.date_event : null
 
   const featuredFlyers = useMemo(
     () => featuredEvent?.flyers?.filter(Boolean) ?? [],
@@ -434,11 +449,14 @@ export default function EvenementsPage() {
               ) : null}
 
               {featuredEvent.deadline_reservation ? (
-                <p className="text-xs text-white/30">
-                  {isFr ? 'Réservations jusqu' : 'Reservations until'}{' '}
-                  {isFr ? 'au ' : ''}
-                  {formatDeadline(featuredEvent.deadline_reservation, locale)}
-                </p>
+                <div className="flex flex-col items-center gap-1 rounded-xl border border-tc-gold/30 bg-tc-gold/10 px-6 py-3 backdrop-blur-sm">
+                  <p className="text-[10px] uppercase tracking-[0.3em] text-tc-gold/70">
+                    {isFr ? '⏳ Réservations jusqu\'au' : '⏳ Reservations until'}
+                  </p>
+                  <p className="text-base font-semibold text-tc-gold">
+                    {formatDeadline(featuredEvent.deadline_reservation, locale)}
+                  </p>
+                </div>
               ) : null}
 
               <Link

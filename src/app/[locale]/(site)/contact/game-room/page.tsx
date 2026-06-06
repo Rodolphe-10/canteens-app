@@ -55,7 +55,7 @@ export default function ContactGameRoomPage() {
                   icon: <WhatsAppIcon />,
                   label: 'WhatsApp',
                   value: '+237 677 138 318',
-                  href: 'https://wa.me/237677138318',
+                  href: 'https://api.whatsapp.com/send?phone=237677138318',
                   external: true,
                 },
               ].map((c, i) => (

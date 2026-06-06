@@ -233,7 +233,7 @@ export default function ReservationForm({
     }
 
     const msg = buildWhatsAppMessage(form, locale)
-    window.open(`https://wa.me/237655867084?text=${msg}`, '_blank')
+    window.open(`https://api.whatsapp.com/send?phone=237655867084&text=${msg}`, '_blank')
     setSent(true)
   }
 

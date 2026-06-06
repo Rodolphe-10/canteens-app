@@ -51,7 +51,7 @@ export default function ContactRestaurantPage() {
                   icon: <WhatsAppIcon />,
                   label: 'WhatsApp',
                   value: '+237 655 867 084',
-                  href: 'https://wa.me/237655867084',
+                  href: 'https://api.whatsapp.com/send?phone=237655867084',
                   external: true,
                 },
                 {
