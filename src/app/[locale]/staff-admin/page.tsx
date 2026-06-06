@@ -22,14 +22,35 @@ const MASTER_KEYPAD = [
 ] as const
 
 const ROLE_STYLES: Record<string, { label: string; color: string; avatar: string }> = {
-  admin: { label: 'Administrateur', color: 'text-tc-gold', avatar: 'bg-tc-gold/20 text-tc-gold' },
-  chef: { label: 'Chef de Salle', color: 'text-blue-400', avatar: 'bg-blue-400/20 text-blue-400' },
-  cm: { label: 'Community Manager', color: 'text-purple-400', avatar: 'bg-purple-400/20 text-purple-400' },
-  livreur: { label: 'Chef Livreur', color: 'text-orange-400', avatar: 'bg-orange-400/20 text-orange-400' },
+  admin: {
+    label: 'Administrateur',
+    color: 'text-tc-gold',
+    avatar: 'bg-tc-gold/15 text-tc-gold border border-tc-gold/20',
+  },
+  chef: {
+    label: 'Chef de Salle',
+    color: 'text-blue-400',
+    avatar: 'bg-blue-500/15 text-blue-400 border border-blue-500/20',
+  },
+  cm: {
+    label: 'Community Manager',
+    color: 'text-purple-400',
+    avatar: 'bg-purple-500/15 text-purple-400 border border-purple-500/20',
+  },
+  livreur: {
+    label: 'Chef Livreur',
+    color: 'text-orange-400',
+    avatar: 'bg-orange-500/15 text-orange-400 border border-orange-500/20',
+  },
 }
 
+const FORM_LABEL_CLASS = 'mb-2 block text-xs uppercase tracking-widest text-white/40'
+
 const FORM_INPUT_CLASS =
-  'w-full rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm text-tc-cream outline-none focus:border-tc-gold/40'
+  'w-full rounded-xl border border-white/10 bg-white/[0.05] px-4 py-3 text-sm text-tc-cream placeholder:text-white/20 outline-none focus:border-tc-gold/40 transition'
+
+const FORM_SELECT_CLASS =
+  'w-full rounded-xl border border-white/10 bg-[#1a1a1a] px-4 py-3 text-sm text-tc-cream outline-none focus:border-tc-gold/40 transition appearance-none cursor-pointer [&>option]:bg-[#1a1a1a] [&>option]:text-tc-cream'
 
 function PinDots({
   length,
@@ -275,12 +296,12 @@ export default function StaffAdminPage() {
               return (
                 <div
                   key={profile.id}
-                  className="rounded-2xl border border-white/10 bg-white/[0.03] p-5"
+                  className="rounded-2xl border border-white/[0.08] bg-white/[0.03] p-5 transition-all duration-200 hover:border-white/15"
                 >
                   <div className="flex items-center gap-4">
                     <div
                       className={cn(
-                        'flex h-12 w-12 shrink-0 items-center justify-center rounded-full text-lg font-bold',
+                        'flex h-12 w-12 shrink-0 items-center justify-center rounded-full text-base font-bold',
                         style.avatar,
                       )}
                     >
@@ -336,26 +357,26 @@ export default function StaffAdminPage() {
           onClick={closeModal}
         >
           <div
-            className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl border border-white/10 bg-[#111] p-6"
+            className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-2xl border border-white/10 bg-[#111] p-7 shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
-            <h3 className="mb-5 font-medium text-tc-cream">
+            <h3 className="mb-6 font-medium text-tc-cream">
               {modal === 'create' ? 'Nouveau profil' : 'Modifier le profil'}
             </h3>
 
-            <div className="space-y-4">
+            <div className="space-y-5">
               <div>
-                <label className="text-xs text-white/40">Nom *</label>
+                <label className={FORM_LABEL_CLASS}>Nom *</label>
                 <input
                   type="text"
                   value={form.nom}
                   onChange={(e) => setForm((prev) => ({ ...prev, nom: e.target.value }))}
-                  className={cn(FORM_INPUT_CLASS, 'mt-1')}
+                  className={FORM_INPUT_CLASS}
                 />
               </div>
 
               <div>
-                <label className="text-xs text-white/40">Code PIN *</label>
+                <label className={FORM_LABEL_CLASS}>Code PIN *</label>
                 <input
                   type="password"
                   value={form.pin}
@@ -366,16 +387,16 @@ export default function StaffAdminPage() {
                   pattern="[0-9]*"
                   inputMode="numeric"
                   placeholder="Min. 4 chiffres"
-                  className={cn(FORM_INPUT_CLASS, 'mt-1')}
+                  className={FORM_INPUT_CLASS}
                 />
               </div>
 
               <div>
-                <label className="text-xs text-white/40">Rôle *</label>
+                <label className={FORM_LABEL_CLASS}>Rôle *</label>
                 <select
                   value={form.role}
                   onChange={(e) => setForm((prev) => ({ ...prev, role: e.target.value }))}
-                  className={cn(FORM_INPUT_CLASS, 'mt-1')}
+                  className={FORM_SELECT_CLASS}
                 >
                   <option value="chef">Chef de Salle</option>
                   <option value="admin">Administrateur</option>
@@ -384,26 +405,29 @@ export default function StaffAdminPage() {
                 </select>
               </div>
 
-              <label className="flex cursor-pointer items-center gap-2">
+              <label className="flex cursor-pointer items-center gap-3 rounded-xl border border-white/5 bg-white/[0.03] px-4 py-3 transition hover:border-white/10">
                 <input
                   type="checkbox"
                   checked={form.actif}
                   onChange={(e) => setForm((prev) => ({ ...prev, actif: e.target.checked }))}
-                  className="rounded border-white/20"
+                  className="h-4 w-4 cursor-pointer accent-tc-gold"
                 />
-                <span className="text-sm text-tc-cream/70">Actif</span>
+                <span className="text-sm text-white/60">Profil actif</span>
+                <span className="ml-auto text-[10px] text-white/25">
+                  {form.actif ? 'Visible au login' : 'Masqué au login'}
+                </span>
               </label>
 
-              <p className="text-[11px] text-white/30">
+              <p className="flex items-center gap-2 rounded-lg border border-amber-500/20 bg-amber-500/10 px-3 py-2 text-[11px] text-amber-400/80">
                 ⚠️ Le PIN doit être unique et connu uniquement de la personne concernée.
               </p>
             </div>
 
-            <div className="mt-6 flex justify-end gap-3">
+            <div className="mt-7 flex gap-3">
               <button
                 type="button"
                 onClick={closeModal}
-                className="rounded-xl border border-white/10 px-4 py-2 text-sm text-white/50 transition-colors hover:text-white/70"
+                className="flex-1 rounded-full border border-white/10 py-2.5 text-sm text-white/50 transition hover:text-tc-cream"
               >
                 Annuler
               </button>
@@ -411,7 +435,7 @@ export default function StaffAdminPage() {
                 type="button"
                 onClick={() => void saveProfile()}
                 disabled={saving || !form.nom.trim() || form.pin.length < 4}
-                className="rounded-xl bg-tc-gold px-4 py-2 text-sm font-medium text-tc-black transition-opacity hover:opacity-90 disabled:opacity-40"
+                className="flex-1 rounded-full bg-tc-gold py-2.5 text-sm font-bold text-tc-black transition hover:bg-tc-gold/90 disabled:opacity-40"
               >
                 {saving ? 'Enregistrement…' : 'Enregistrer'}
               </button>
