@@ -1,8 +1,8 @@
 'use client'
 
-import { useState } from 'react'
+import { useRef, useState, type RefObject } from 'react'
 import { motion } from 'framer-motion'
-import { Send, ChevronDown, CheckCircle } from 'lucide-react'
+import { Send, ChevronDown, CheckCircle, AlertCircle } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
 
@@ -159,6 +159,29 @@ function buildWhatsAppMessage(f: FormData, locale: string): string {
 const inputClass = 'w-full bg-white/5 border border-white/10 px-4 py-3 text-sm text-tc-cream placeholder-tc-cream/20 focus:border-tc-gold/50 focus:outline-none transition-colors'
 const labelClass = 'mb-2 block text-xs uppercase tracking-widest text-tc-cream/40'
 const sectionTitleClass = 'mb-6 text-xs uppercase tracking-[0.3em] text-tc-gold/60'
+const errorMessageClass = 'mt-1.5 flex items-center gap-1.5 text-xs text-red-400 animate-in slide-in-from-top-1'
+
+const errorMessagesFr: Record<string, string> = {
+  nom: 'Veuillez indiquer votre nom',
+  telephone: 'Veuillez indiquer votre numéro de téléphone',
+  date: 'Veuillez choisir une date',
+  heure: "Veuillez indiquer une heure d'arrivée",
+  espace: 'Veuillez choisir un espace',
+  personnes: 'Veuillez indiquer le nombre de personnes',
+  typeEvenement: "Veuillez choisir un type d'événement",
+  buffetFormule: 'Veuillez choisir une formule buffet',
+}
+
+const errorMessagesEn: Record<string, string> = {
+  nom: 'Please enter your name',
+  telephone: 'Please enter your phone number',
+  date: 'Please choose a date',
+  heure: 'Please enter an arrival time',
+  espace: 'Please choose a space',
+  personnes: 'Please enter the number of guests',
+  typeEvenement: 'Please choose an event type',
+  buffetFormule: 'Please choose a buffet package',
+}
 
 const ESPACE_SLUG_MAP: Record<string, { fr: string; en: string }> = {
   restaurant: { fr: 'Restaurant', en: 'Restaurant' },
@@ -184,6 +207,7 @@ export default function ReservationForm({
   defaultEspace?: string
 }) {
   const isFr = locale === 'fr'
+  const errorMessages = isFr ? errorMessagesFr : errorMessagesEn
   const prefilledEspace = resolveEspaceFromSlug(defaultEspace, locale)
   const [form, setForm] = useState<FormData>(() => ({
     ...initial,
@@ -191,20 +215,47 @@ export default function ReservationForm({
   }))
   const [errors, setErrors] = useState<Partial<Record<keyof FormData, boolean>>>({})
   const [sent, setSent] = useState(false)
+  const nomRef = useRef<HTMLDivElement>(null)
+  const telephoneRef = useRef<HTMLDivElement>(null)
+  const dateRef = useRef<HTMLDivElement>(null)
+  const heureRef = useRef<HTMLDivElement>(null)
+  const personnesRef = useRef<HTMLDivElement>(null)
+  const espaceRef = useRef<HTMLDivElement>(null)
+  const typeEvenementRef = useRef<HTMLDivElement>(null)
+  const buffetFormuleRef = useRef<HTMLDivElement>(null)
 
   const set = (key: keyof FormData, value: string | boolean) =>
     setForm(prev => ({ ...prev, [key]: value }))
+
+  const fieldErrorClass = (hasError: boolean) =>
+    hasError ? 'border-red-500/40 focus:border-red-500/50' : ''
 
   const required: (keyof FormData)[] = ['nom', 'telephone', 'date', 'heure', 'personnes', 'espace', 'typeEvenement']
 
   const handleSubmit = async () => {
     const newErrors: Partial<Record<keyof FormData, boolean>> = {}
-    required.forEach(k => { if (!form[k]) newErrors[k] = true })
+    required.forEach((k) => {
+      const value = form[k]
+      if (!value?.toString().trim()) newErrors[k] = true
+    })
     if (form.buffet && !form.buffetFormule) newErrors.buffetFormule = true
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors)
-      const firstError = document.querySelector('[data-error="true"]')
-      firstError?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      const fieldRefs: Record<string, RefObject<HTMLDivElement | null>> = {
+        nom: nomRef,
+        telephone: telephoneRef,
+        date: dateRef,
+        heure: heureRef,
+        personnes: personnesRef,
+        espace: espaceRef,
+        typeEvenement: typeEvenementRef,
+        buffetFormule: buffetFormuleRef,
+      }
+      const scrollOrder = ['nom', 'telephone', 'date', 'heure', 'personnes', 'espace', 'typeEvenement', 'buffetFormule']
+      const firstError = scrollOrder.find((f) => newErrors[f as keyof FormData])
+      if (firstError && fieldRefs[firstError]?.current) {
+        fieldRefs[firstError].current.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      }
       return
     }
 
@@ -278,7 +329,7 @@ export default function ReservationForm({
             {isFr ? '01 — Vos informations' : '01 — Your information'}
           </p>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <div data-error={errors.nom ? 'true' : undefined}>
+            <div ref={nomRef}>
               <label className={cn(labelClass, errors.nom && 'text-red-400')}>
                 {isFr ? 'Nom complet' : 'Full name'} *
               </label>
@@ -287,10 +338,16 @@ export default function ReservationForm({
                 value={form.nom}
                 onChange={e => { set('nom', e.target.value); setErrors(p => ({ ...p, nom: false })) }}
                 placeholder={isFr ? 'Jean-Pierre Mballa' : 'John Doe'}
-                className={cn(inputClass, errors.nom && 'border-red-500/50')}
+                className={cn(inputClass, fieldErrorClass(!!errors.nom))}
               />
+              {errors.nom && (
+                <p className={errorMessageClass}>
+                  <AlertCircle size={12} />
+                  {errorMessages.nom}
+                </p>
+              )}
             </div>
-            <div data-error={errors.telephone ? 'true' : undefined}>
+            <div ref={telephoneRef}>
               <label className={cn(labelClass, errors.telephone && 'text-red-400')}>
                 {isFr ? 'Téléphone WhatsApp' : 'WhatsApp phone'} *
               </label>
@@ -299,8 +356,14 @@ export default function ReservationForm({
                 value={form.telephone}
                 onChange={e => { set('telephone', e.target.value); setErrors(p => ({ ...p, telephone: false })) }}
                 placeholder="+237 6XX XXX XXX"
-                className={cn(inputClass, errors.telephone && 'border-red-500/50')}
+                className={cn(inputClass, fieldErrorClass(!!errors.telephone))}
               />
+              {errors.telephone && (
+                <p className={errorMessageClass}>
+                  <AlertCircle size={12} />
+                  {errorMessages.telephone}
+                </p>
+              )}
             </div>
             <div className="sm:col-span-2">
               <label className={labelClass}>Email {isFr ? '(optionnel)' : '(optional)'}</label>
@@ -320,7 +383,7 @@ export default function ReservationForm({
             {isFr ? '02 — Détails de la réservation' : '02 — Booking details'}
           </p>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <div data-error={errors.date ? 'true' : undefined}>
+            <div ref={dateRef}>
               <label className={cn(labelClass, errors.date && 'text-red-400')}>
                 {isFr ? 'Date souhaitée' : 'Desired date'} *
               </label>
@@ -329,10 +392,16 @@ export default function ReservationForm({
                 value={form.date}
                 min={new Date().toISOString().split('T')[0]}
                 onChange={e => { set('date', e.target.value); setErrors(p => ({ ...p, date: false })) }}
-                className={cn(inputClass, errors.date && 'border-red-500/50')}
+                className={cn(inputClass, fieldErrorClass(!!errors.date))}
               />
+              {errors.date && (
+                <p className={errorMessageClass}>
+                  <AlertCircle size={12} />
+                  {errorMessages.date}
+                </p>
+              )}
             </div>
-            <div data-error={errors.heure ? 'true' : undefined}>
+            <div ref={heureRef}>
               <label className={cn(labelClass, errors.heure && 'text-red-400')}>
                 {isFr ? 'Heure d\'arrivée' : 'Arrival time'} *
               </label>
@@ -340,10 +409,16 @@ export default function ReservationForm({
                 type="time"
                 value={form.heure}
                 onChange={e => { set('heure', e.target.value); setErrors(p => ({ ...p, heure: false })) }}
-                className={cn(inputClass, errors.heure && 'border-red-500/50')}
+                className={cn(inputClass, fieldErrorClass(!!errors.heure))}
               />
+              {errors.heure && (
+                <p className={errorMessageClass}>
+                  <AlertCircle size={12} />
+                  {errorMessages.heure}
+                </p>
+              )}
             </div>
-            <div data-error={errors.personnes ? 'true' : undefined}>
+            <div ref={personnesRef}>
               <label className={cn(labelClass, errors.personnes && 'text-red-400')}>
                 {isFr ? 'Nombre de personnes' : 'Number of guests'} *
               </label>
@@ -354,10 +429,16 @@ export default function ReservationForm({
                 value={form.personnes}
                 onChange={e => { set('personnes', e.target.value); setErrors(p => ({ ...p, personnes: false })) }}
                 placeholder="ex: 12"
-                className={cn(inputClass, errors.personnes && 'border-red-500/50')}
+                className={cn(inputClass, fieldErrorClass(!!errors.personnes))}
               />
+              {errors.personnes && (
+                <p className={errorMessageClass}>
+                  <AlertCircle size={12} />
+                  {errorMessages.personnes}
+                </p>
+              )}
             </div>
-            <div data-error={errors.espace ? 'true' : undefined}>
+            <div ref={espaceRef}>
               <label className={cn(labelClass, errors.espace && 'text-red-400')}>
                 {isFr ? 'Espace souhaité' : 'Desired space'} *
               </label>
@@ -365,7 +446,7 @@ export default function ReservationForm({
                 <select
                   value={form.espace}
                   onChange={e => { set('espace', e.target.value); setErrors(p => ({ ...p, espace: false })) }}
-                  className={cn(inputClass, 'appearance-none pr-8 text-tc-cream', errors.espace && 'border-red-500/50')}
+                  className={cn(inputClass, 'appearance-none pr-8 text-tc-cream', fieldErrorClass(!!errors.espace))}
                 >
                   <option value="" style={{ backgroundColor: '#0A0A0A', color: '#F5F0EB' }}>
                     {isFr ? '— Choisir —' : '— Select —'}
@@ -382,6 +463,12 @@ export default function ReservationForm({
                 </select>
                 <ChevronDown size={14} className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-tc-cream/30" />
               </div>
+              {errors.espace && (
+                <p className={errorMessageClass}>
+                  <AlertCircle size={12} />
+                  {errorMessages.espace}
+                </p>
+              )}
             </div>
           </div>
         </div>
@@ -392,7 +479,7 @@ export default function ReservationForm({
             {isFr ? '03 — Votre événement' : '03 — Your event'}
           </p>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <div data-error={errors.typeEvenement ? 'true' : undefined}>
+            <div ref={typeEvenementRef}>
               <label className={cn(labelClass, errors.typeEvenement && 'text-red-400')}>
                 {isFr ? 'Type d\'événement' : 'Event type'} *
               </label>
@@ -400,7 +487,7 @@ export default function ReservationForm({
                 <select
                   value={form.typeEvenement}
                   onChange={e => { set('typeEvenement', e.target.value); setErrors(p => ({ ...p, typeEvenement: false })) }}
-                  className={cn(inputClass, 'appearance-none pr-8 text-tc-cream', errors.typeEvenement && 'border-red-500/50')}
+                  className={cn(inputClass, 'appearance-none pr-8 text-tc-cream', fieldErrorClass(!!errors.typeEvenement))}
                 >
                   <option value="" style={{ backgroundColor: '#0A0A0A', color: '#F5F0EB' }}>
                     {isFr ? '— Choisir —' : '— Select —'}
@@ -417,6 +504,12 @@ export default function ReservationForm({
                 </select>
                 <ChevronDown size={14} className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-tc-cream/30" />
               </div>
+              {errors.typeEvenement && (
+                <p className={errorMessageClass}>
+                  <AlertCircle size={12} />
+                  {errorMessages.typeEvenement}
+                </p>
+              )}
             </div>
             <div>
               <label className={labelClass}>
@@ -464,14 +557,15 @@ export default function ReservationForm({
 
           {form.buffet && (
             <motion.div
+              ref={buffetFormuleRef}
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
               className="grid grid-cols-1 gap-3"
-              data-error={errors.buffetFormule ? 'true' : undefined}
             >
               {errors.buffetFormule && (
-                <p className="text-xs text-red-400">
-                  {isFr ? 'Veuillez choisir une formule' : 'Please choose a package'}
+                <p className={errorMessageClass}>
+                  <AlertCircle size={12} />
+                  {errorMessages.buffetFormule}
                 </p>
               )}
               {buffetOptions.map(option => (

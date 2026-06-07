@@ -51,7 +51,7 @@ export default function Cart({ locale }: { locale: string }) {
   const [sent, setSent] = useState(false)
   const [savedOrderId, setSavedOrderId] = useState<string | null>(null)
 
-  const deliveryFee = getDeliveryFee(delivery.quartier || '')
+  const deliveryFee = delivery.customFee ?? getDeliveryFee(delivery.quartier || '')
 
   const grandTotal = totalAmount() + deliveryFee
 
@@ -360,7 +360,7 @@ export default function Cart({ locale }: { locale: string }) {
                       ))}
                       <div className="mt-2 flex justify-between border-t border-white/10 pt-2 text-sm">
                         <span className="text-tc-cream/50">{isFr ? 'Livraison' : 'Delivery'}</span>
-                        <span className="text-tc-cream/70">{formatPrice(DELIVERY_FEE)}</span>
+                        <span className="text-tc-cream/70">{formatPrice(deliveryFee)}</span>
                       </div>
                       <div className="flex justify-between text-base font-bold">
                         <span className="text-tc-cream">Total</span>
