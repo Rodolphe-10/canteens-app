@@ -186,6 +186,7 @@ type DeliveryRow = {
   assigned_at: string
   started_at?: string
   delivered_at?: string
+  eta_minutes?: number
   livreurs?: {
     nom: string
     telephone: string
@@ -574,14 +575,10 @@ export default function AdminDashboardPage() {
   const livreurPhotoRef = useRef<HTMLInputElement>(null)
   const [deliveries, setDeliveries] = useState<DeliveryRow[]>([])
   const [loadingDeliveries, setLoadingDeliveries] = useState(true)
-  const [deliveryModal, setDeliveryModal] = useState(false)
-  const [deliveryForm, setDeliveryForm] = useState<{
-    client_nom: string
-    client_telephone: string
-    client_adresse: string
-    livreur_id: string
-  }>({ client_nom: '', client_telephone: '', client_adresse: '', livreur_id: '' })
-  const [savingDelivery, setSavingDelivery] = useState(false)
+  const [assignModal, setAssignModal] = useState<OrderRow | null>(null)
+  const [assignLivreurId, setAssignLivreurId] = useState('')
+  const [assignEta, setAssignEta] = useState(25)
+  const [assigningDelivery, setAssigningDelivery] = useState(false)
   const [availableLivreurs, setAvailableLivreurs] = useState<LivreurRow[]>([])
   const supabase = useMemo(() => createClient(), [])
 
@@ -812,18 +809,6 @@ export default function AdminDashboardPage() {
       }
     }
   }, [tab, isAuthed, fetchDeliveries, supabase])
-
-  useEffect(() => {
-    if (!deliveryModal) return
-    void (async () => {
-      const { data } = await supabase
-        .from('livreurs')
-        .select('*')
-        .eq('disponible', true)
-        .eq('actif', true)
-      setAvailableLivreurs((data as LivreurRow[]) ?? [])
-    })()
-  }, [deliveryModal, supabase])
 
   const fetchGalleryPhotos = useCallback(
     async (galleryId: string) => {
@@ -1117,40 +1102,62 @@ export default function AdminDashboardPage() {
     )
   }
 
-  const createDelivery = async () => {
-    if (!deliveryForm.client_nom.trim() || !deliveryForm.livreur_id) return
-    setSavingDelivery(true)
+  const assignDelivery = async () => {
+    if (!assignModal || !assignLivreurId) return
+    setAssigningDelivery(true)
+
+    const livreur = availableLivreurs.find((l) => l.id === assignLivreurId)
+    if (!livreur) {
+      setAssigningDelivery(false)
+      return
+    }
+
     const { data, error } = await supabase
       .from('deliveries')
       .insert({
-        client_nom: deliveryForm.client_nom,
-        client_telephone: deliveryForm.client_telephone,
-        client_adresse: deliveryForm.client_adresse,
-        livreur_id: deliveryForm.livreur_id,
+        order_id: assignModal.id,
+        livreur_id: assignLivreurId,
+        client_nom: assignModal.client_nom,
+        client_telephone: assignModal.client_telephone,
+        client_adresse: assignModal.quartier,
         statut: 'assignee',
+        eta_minutes: assignEta,
       })
       .select()
       .single()
+
     if (error) {
       alert(`Erreur : ${error.message}`)
-      setSavingDelivery(false)
+      setAssigningDelivery(false)
       return
     }
+
     const delivery = data as DeliveryRow
-    const trackingUrl = `${window.location.origin}/suivi/${delivery.lien_suivi}`
     const driverUrl = `${window.location.origin}/livreur/${delivery.id}`
-    alert(
-      `✅ Livraison créée !\n\nLien livreur :\n${driverUrl}\n\nLien suivi client :\n${trackingUrl}`,
+
+    const driverMsg = encodeURIComponent(
+      `🛵 NOUVELLE LIVRAISON - The Canteen's\n\n` +
+        `Client : ${assignModal.client_nom}\n` +
+        `📞 ${assignModal.client_telephone}\n` +
+        `📍 ${assignModal.quartier}\n` +
+        `⏱ ETA estimé : ${assignEta} min\n\n` +
+        `Ouvre ton app de livraison :\n${driverUrl}`,
     )
+
+    await supabase
+      .from('orders')
+      .update({ statut: 'en_livraison' })
+      .eq('id', assignModal.id)
+    await fetchOrders()
     await fetchDeliveries()
-    setDeliveryModal(false)
-    setDeliveryForm({
-      client_nom: '',
-      client_telephone: '',
-      client_adresse: '',
-      livreur_id: '',
-    })
-    setSavingDelivery(false)
+
+    setAssignModal(null)
+    setAssigningDelivery(false)
+
+    window.open(
+      `https://api.whatsapp.com/send?phone=${livreur.telephone.replace(/\D/g, '')}&text=${driverMsg}`,
+      '_blank',
+    )
   }
 
   const updateDeliveryStatus = async (
@@ -1158,10 +1165,22 @@ export default function AdminDashboardPage() {
     statut: DeliveryRow['statut'],
   ) => {
     const updates: Record<string, unknown> = { statut }
+    if (statut === 'en_route') updates.started_at = new Date().toISOString()
     if (statut === 'livree') updates.delivered_at = new Date().toISOString()
     await supabase.from('deliveries').update(updates).eq('id', id)
     await fetchDeliveries()
   }
+
+  const deliveriesLivreesAujourdhui = useMemo(
+    () =>
+      deliveries.filter((d) => {
+        if (d.statut !== 'livree' || !d.delivered_at) return false
+        return (
+          new Date(d.delivered_at).toDateString() === new Date().toDateString()
+        )
+      }).length,
+    [deliveries],
+  )
 
   const copyToClipboard = async (url: string) => {
     try {
@@ -2095,6 +2114,28 @@ export default function AdminDashboardPage() {
                         </button>
                       </div>
                     ) : null}
+
+                    {o.statut !== 'livre' ? (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setAssignModal(o)
+                          setAssignLivreurId('')
+                          setAssignEta(25)
+                          void supabase
+                            .from('livreurs')
+                            .select('*')
+                            .eq('disponible', true)
+                            .eq('actif', true)
+                            .then(({ data }) =>
+                              setAvailableLivreurs((data as LivreurRow[]) ?? []),
+                            )
+                        }}
+                        className="mt-3 w-full rounded-full border border-tc-gold/30 py-2 text-xs text-tc-gold transition hover:bg-tc-gold/10"
+                      >
+                        🛵 Assigner un livreur
+                      </button>
+                    ) : null}
                   </article>
                 )
               })}
@@ -2520,16 +2561,7 @@ export default function AdminDashboardPage() {
           </>
         ) : tab === 'livraisons' ? (
           <>
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <h2 className="font-medium text-tc-cream">Livraisons</h2>
-              <button
-                type="button"
-                onClick={() => setDeliveryModal(true)}
-                className="rounded-full border border-tc-gold/40 px-4 py-2 text-xs text-tc-gold transition hover:bg-tc-gold/10"
-              >
-                + Nouvelle livraison
-              </button>
-            </div>
+            <h2 className="mb-6 font-medium text-tc-cream">Livraisons en cours</h2>
 
             <div className="mb-6 flex flex-wrap gap-3">
               <div className="rounded-xl border border-white/5 bg-white/[0.03] p-3 text-center">
@@ -2546,9 +2578,9 @@ export default function AdminDashboardPage() {
               </div>
               <div className="rounded-xl border border-white/5 bg-white/[0.03] p-3 text-center">
                 <p className="text-2xl font-bold text-tc-cream">
-                  {deliveries.filter((d) => d.statut === 'livree').length}
+                  {deliveriesLivreesAujourdhui}
                 </p>
-                <p className="text-[10px] uppercase text-white/30">Livrées</p>
+                <p className="text-[10px] uppercase text-white/30">Livrées aujourd&apos;hui</p>
               </div>
             </div>
 
@@ -2599,82 +2631,97 @@ export default function AdminDashboardPage() {
                             </span>
                           </div>
                           <p className="mt-2 text-xs text-white/50">
-                            {d.client_nom}
-                            {d.client_telephone ? ` · ${d.client_telephone}` : ''}
+                            👤 {d.client_nom}
+                            {d.client_telephone ? (
+                              <>
+                                {' · '}
+                                <a
+                                  href={`tel:${d.client_telephone}`}
+                                  className="text-tc-gold hover:underline"
+                                >
+                                  📞 {d.client_telephone}
+                                </a>
+                              </>
+                            ) : null}
                           </p>
                           {d.client_adresse ? (
-                            <p className="text-xs text-white/30">{d.client_adresse}</p>
+                            <p className="text-xs text-white/30">📍 {d.client_adresse}</p>
+                          ) : null}
+                          {d.statut === 'en_route' && d.started_at ? (
+                            <p className="mt-1 text-xs text-blue-400/80">
+                              ⏱ En route depuis{' '}
+                              {Math.floor(
+                                (Date.now() - new Date(d.started_at).getTime()) / 60000,
+                              )}{' '}
+                              min · ETA ~{d.eta_minutes ?? 25} min
+                            </p>
                           ) : null}
                         </div>
                       </div>
 
                       <div className="mt-3 flex flex-wrap gap-2 border-t border-white/5 pt-3">
                         {d.statut === 'assignee' ? (
-                          <>
-                            <button
-                              type="button"
-                              onClick={() =>
-                                void updateDeliveryStatus(d.id, 'en_route')
-                              }
-                              className="rounded-full border border-blue-400/30 px-3 py-1 text-xs text-blue-400 transition hover:bg-blue-500/10"
-                            >
-                              🛵 En route
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() =>
-                                void updateDeliveryStatus(d.id, 'annulee')
-                              }
-                              className="rounded-full border border-red-400/20 px-3 py-1 text-xs text-red-400/70 transition hover:bg-red-500/10"
-                            >
-                              Annuler
-                            </button>
-                          </>
+                          <button
+                            type="button"
+                            onClick={() => void updateDeliveryStatus(d.id, 'en_route')}
+                            className="rounded-full border border-blue-400/30 px-3 py-1 text-xs text-blue-400 transition hover:bg-blue-500/10"
+                          >
+                            🛵 En route
+                          </button>
                         ) : null}
                         {d.statut === 'en_route' ? (
+                          <button
+                            type="button"
+                            onClick={() => void updateDeliveryStatus(d.id, 'livree')}
+                            className="rounded-full border border-emerald-400/30 px-3 py-1 text-xs text-emerald-400 transition hover:bg-emerald-500/10"
+                          >
+                            ✅ Livrée
+                          </button>
+                        ) : null}
+                        {d.statut !== 'livree' && d.statut !== 'annulee' ? (
                           <>
                             <button
                               type="button"
                               onClick={() =>
-                                void updateDeliveryStatus(d.id, 'livree')
+                                window.open(
+                                  `${window.location.origin}/suivi/${d.lien_suivi}`,
+                                  '_blank',
+                                )
                               }
-                              className="rounded-full border border-emerald-400/30 px-3 py-1 text-xs text-emerald-400 transition hover:bg-emerald-500/10"
+                              className="rounded-full border border-white/10 px-3 py-1 text-xs text-white/40 transition hover:text-tc-gold"
                             >
-                              ✅ Livrée
+                              📍 Position en direct
                             </button>
                             <button
                               type="button"
-                              onClick={() =>
-                                void updateDeliveryStatus(d.id, 'annulee')
-                              }
-                              className="rounded-full border border-red-400/20 px-3 py-1 text-xs text-red-400/70 transition hover:bg-red-500/10"
+                              onClick={() => {
+                                const clientMsg = encodeURIComponent(
+                                  `Bonjour ${d.client_nom} ! 👋\n\n` +
+                                    `Votre commande The Canteen's est en route 🛵\n\n` +
+                                    `Suivez la position de votre livreur en temps réel :\n` +
+                                    `${window.location.origin}/suivi/${d.lien_suivi}\n\n` +
+                                    `Merci de votre confiance ! 🍽️`,
+                                )
+                                window.open(
+                                  `https://api.whatsapp.com/send?phone=${(d.client_telephone ?? '').replace(/\D/g, '')}&text=${clientMsg}`,
+                                  '_blank',
+                                )
+                              }}
+                              className="rounded-full border border-white/10 px-3 py-1 text-xs text-white/40 transition hover:text-tc-gold"
                             >
-                              Annuler
+                              📱 Notifier le client
                             </button>
                           </>
                         ) : null}
-                        <button
-                          type="button"
-                          onClick={() =>
-                            void copyToClipboard(
-                              `${window.location.origin}/livreur/${d.id}`,
-                            )
-                          }
-                          className="rounded-full border border-white/10 px-3 py-1 text-xs text-white/40 transition hover:text-tc-gold"
-                        >
-                          📋 Lien livreur
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() =>
-                            void copyToClipboard(
-                              `${window.location.origin}/suivi/${d.lien_suivi}`,
-                            )
-                          }
-                          className="rounded-full border border-white/10 px-3 py-1 text-xs text-white/40 transition hover:text-tc-gold"
-                        >
-                          📍 Suivi client
-                        </button>
+                        {d.statut !== 'livree' ? (
+                          <button
+                            type="button"
+                            onClick={() => void updateDeliveryStatus(d.id, 'annulee')}
+                            className="rounded-full border border-red-400/20 px-3 py-1 text-xs text-red-400/60 transition hover:bg-red-500/10"
+                          >
+                            Annuler
+                          </button>
+                        ) : null}
                       </div>
                     </article>
                   )
@@ -2685,102 +2732,85 @@ export default function AdminDashboardPage() {
         ) : null}
       </div>
 
-      {deliveryModal && (
+      {assignModal && (
         <div
           className="fixed inset-0 z-[200] flex items-center justify-center bg-black/85 p-4"
-          onClick={() => setDeliveryModal(false)}
+          onClick={() => setAssignModal(null)}
         >
           <div
             className="w-full max-w-md rounded-2xl border border-white/10 bg-[#111] p-6"
             onClick={(e) => e.stopPropagation()}
           >
-            <h3 className="mb-5 font-medium text-tc-cream">Nouvelle livraison</h3>
+            <h3 className="font-medium text-tc-cream">Assigner une livraison</h3>
+            <p className="mb-4 mt-1 text-xs text-white/40">
+              Client : {assignModal.client_nom}
+            </p>
+
+            <div className="mb-4 rounded-xl border border-white/5 bg-white/[0.03] p-4">
+              <p className="text-sm font-medium text-tc-cream">
+                👤 {assignModal.client_nom}
+              </p>
+              <p className="text-xs text-white/50">📞 {assignModal.client_telephone}</p>
+              <p className="text-xs text-white/50">📍 {assignModal.quartier}</p>
+              <p className="text-xs text-white/50">💳 {assignModal.mode_paiement}</p>
+              <p className="text-sm font-bold text-tc-gold">
+                💰 {formatAmount(assignModal.total)}
+              </p>
+            </div>
+
             <div className="space-y-4">
               <div>
-                <label className="text-xs text-white/40">Nom client *</label>
-                <input
-                  type="text"
-                  value={deliveryForm.client_nom}
-                  onChange={(e) =>
-                    setDeliveryForm((prev) => ({
-                      ...prev,
-                      client_nom: e.target.value,
-                    }))
-                  }
-                  className={cn(FORM_INPUT_CLASS, 'mt-1')}
-                />
-              </div>
-              <div>
-                <label className="text-xs text-white/40">Téléphone client</label>
-                <input
-                  type="tel"
-                  value={deliveryForm.client_telephone}
-                  onChange={(e) =>
-                    setDeliveryForm((prev) => ({
-                      ...prev,
-                      client_telephone: e.target.value,
-                    }))
-                  }
-                  className={cn(FORM_INPUT_CLASS, 'mt-1')}
-                />
-              </div>
-              <div>
-                <label className="text-xs text-white/40">Adresse / Quartier</label>
-                <textarea
-                  rows={2}
-                  value={deliveryForm.client_adresse}
-                  onChange={(e) =>
-                    setDeliveryForm((prev) => ({
-                      ...prev,
-                      client_adresse: e.target.value,
-                    }))
-                  }
-                  className={cn(FORM_INPUT_CLASS, 'mt-1 resize-none')}
-                />
-              </div>
-              <div>
-                <label className="text-xs text-white/40">Livreur *</label>
-                <select
-                  value={deliveryForm.livreur_id}
-                  onChange={(e) =>
-                    setDeliveryForm((prev) => ({
-                      ...prev,
-                      livreur_id: e.target.value,
-                    }))
-                  }
-                  className={cn(FORM_INPUT_CLASS, 'mt-1')}
-                >
-                  <option value="" className="bg-[#111]">
-                    Choisir un livreur…
-                  </option>
-                  {availableLivreurs.map((l) => (
+                <label className="text-xs text-white/40">Choisir le livreur *</label>
+                {availableLivreurs.length === 0 ? (
+                  <p className="mt-2 text-xs text-white/30">Aucun livreur disponible</p>
+                ) : (
+                  <select
+                    value={assignLivreurId}
+                    onChange={(e) => setAssignLivreurId(e.target.value)}
+                    className={cn(FORM_INPUT_CLASS, 'mt-1')}
+                  >
+                    <option value="" className="bg-[#111]">
+                      — Sélectionner un livreur —
+                    </option>
+                    {availableLivreurs.map((l) => (
                       <option key={l.id} value={l.id} className="bg-[#111]">
                         {l.nom} — {l.moto_immatriculation}
                       </option>
                     ))}
-                </select>
+                  </select>
+                )}
+              </div>
+
+              <div>
+                <label className="text-xs text-white/40">
+                  Temps de livraison estimé (minutes)
+                </label>
+                <input
+                  type="number"
+                  min={5}
+                  max={120}
+                  value={assignEta}
+                  onChange={(e) => setAssignEta(Number(e.target.value))}
+                  className={cn(FORM_INPUT_CLASS, 'mt-1')}
+                />
               </div>
             </div>
+
             <div className="mt-6 flex gap-2">
               <button
                 type="button"
-                disabled={savingDelivery}
-                onClick={() => setDeliveryModal(false)}
-                className="flex-1 rounded-full border border-white/15 px-4 py-2 text-xs text-white/50 transition hover:text-tc-cream disabled:opacity-50"
+                onClick={() => setAssignModal(null)}
+                className="flex-1 rounded-full border border-white/15 px-4 py-2 text-xs text-white/50 transition hover:text-tc-cream"
               >
                 Annuler
               </button>
               <button
                 type="button"
-                disabled={
-                  savingDelivery ||
-                  !deliveryForm.client_nom.trim() ||
-                  !deliveryForm.livreur_id
-                }
-                onClick={() => void createDelivery()}
-                className="flex-1 rounded-full bg-tc-gold px-4 py-2 text-xs font-bold uppercase tracking-wider text-tc-black transition hover:bg-tc-gold/90 disabled:opacity-50"
+                disabled={assigningDelivery || !assignLivreurId}
+                onClick={() => void assignDelivery()}
+                className="flex-1 rounded-full bg-tc-gold px-4 py-2 text-xs font-bold text-tc-black transition hover:bg-tc-gold/90 disabled:opacity-50"
               >
-                {savingDelivery ? 'Création…' : 'Créer la livraison'}
+                {assigningDelivery ? 'Assignation…' : '🛵 Assigner + Notifier le livreur'}
               </button>
             </div>
           </div>

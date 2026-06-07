@@ -24,6 +24,8 @@ type DeliveryRow = {
   statut: 'assignee' | 'en_route' | 'livree' | 'annulee'
   lat?: number
   lng?: number
+  started_at?: string
+  eta_minutes?: number
   livreurs?: LivreurInfo
 }
 
@@ -72,7 +74,7 @@ export default function SuiviDeliveryPage() {
     const { data } = await supabase
       .from('deliveries')
       .select(
-        'id, statut, lat, lng, livreurs(nom, moto_immatriculation, moto_modele, photo_url)',
+        'id, statut, lat, lng, started_at, eta_minutes, livreurs(nom, moto_immatriculation, moto_modele, photo_url)',
       )
       .eq('lien_suivi', token)
       .single()
@@ -107,6 +109,10 @@ export default function SuiviDeliveryPage() {
   const statut = delivery?.statut ?? 'assignee'
   const header = STATUS_HEADER[statut]
   const livreur = delivery?.livreurs
+  const elapsed = delivery?.started_at
+    ? Math.floor((Date.now() - new Date(delivery.started_at).getTime()) / 60000)
+    : 0
+  const remaining = Math.max(0, (delivery?.eta_minutes ?? 25) - elapsed)
   const showMap =
     statut === 'en_route' &&
     delivery?.lat != null &&
@@ -183,6 +189,30 @@ export default function SuiviDeliveryPage() {
                   immatriculation={livreur!.moto_immatriculation}
                 />
               </div>
+            ) : null}
+
+            {statut === 'en_route' ? (
+              <>
+                <div className="flex items-center justify-center gap-6 rounded-2xl border border-blue-500/20 bg-blue-500/5 p-4">
+                  <div className="text-center">
+                    <p className="font-mono text-3xl font-bold text-blue-400">~{remaining}</p>
+                    <p className="mt-1 text-[10px] uppercase tracking-wider text-white/30">
+                      min restantes
+                    </p>
+                  </div>
+                  <div className="text-center">
+                    <p className="font-mono text-3xl font-bold text-white/40">{elapsed}</p>
+                    <p className="mt-1 text-[10px] uppercase tracking-wider text-white/30">
+                      min écoulées
+                    </p>
+                  </div>
+                </div>
+                {remaining === 0 ? (
+                  <p className="animate-pulse text-center text-sm text-amber-400">
+                    🛵 Votre livreur devrait arriver d&apos;un moment à l&apos;autre !
+                  </p>
+                ) : null}
+              </>
             ) : null}
 
             <p className="text-center text-sm leading-relaxed text-white/50">

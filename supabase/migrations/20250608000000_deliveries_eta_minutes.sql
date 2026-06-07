@@ -1,0 +1,1 @@
+ALTER TABLE public.deliveries ADD COLUMN IF NOT EXISTS eta_minutes INTEGER DEFAULT 25;
