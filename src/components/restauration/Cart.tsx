@@ -11,7 +11,18 @@ import DeliveryForm, { DeliveryData, emptyDelivery } from './DeliveryForm'
 
 type Step = 'cart' | 'delivery' | 'confirm'
 
-const DELIVERY_FEE = 1000
+// Quartiers éloignés → 2000F, les autres → 1000F
+const FAR_QUARTIERS = [
+  'odza', 'nkol eton', 'nsam', 'mimboman', 'mvog-mbi', 'etoudi', 'nkomo',
+  'jouvence', 'mballa 2', 'soa', 'messassi', 'biyem-assi', 'ngoa-ekelle',
+  'ahala', 'ekounou', 'nkolfoulou', 'nkoabang', 'mbankomo', 'djoungolo',
+  'autre quartier',
+]
+
+function getDeliveryFee(quartier: string): number {
+  const q = quartier.toLowerCase().trim()
+  return FAR_QUARTIERS.some(f => q.includes(f)) ? 2000 : 1000
+}
 
 function generateOrderNumber() {
   return `TC-${Date.now().toString().slice(-5)}`
@@ -38,8 +49,11 @@ export default function Cart({ locale }: { locale: string }) {
   const [delivery, setDelivery] = useState<DeliveryData>(emptyDelivery)
   const [orderNumber] = useState(generateOrderNumber)
   const [sent, setSent] = useState(false)
+  const [savedOrderId, setSavedOrderId] = useState<string | null>(null)
 
-  const grandTotal = totalAmount() + DELIVERY_FEE
+  const deliveryFee = getDeliveryFee(delivery.quartier || '')
+
+  const grandTotal = totalAmount() + deliveryFee
 
   const handleClose = () => {
     toggleCart()
@@ -55,12 +69,14 @@ export default function Cart({ locale }: { locale: string }) {
       ? (isFr ? 'Dès que possible' : 'ASAP')
       : delivery.heureChoisie
 
+    const dashboardLink = `https://canteens-app.vercel.app/fr/admin`
+
     const msg = isFr
       ? `🛵 *COMMANDE LIVRAISON — THE CANTEEN'S*\n\n` +
         `📋 *N° Commande :* ${orderNumber}\n\n` +
         `🍽️ *Commande :*\n${lignes}\n\n` +
         `💰 Sous-total : ${formatPrice(totalAmount())}\n` +
-        `🛵 Frais de livraison : ${formatPrice(DELIVERY_FEE)}\n` +
+        `🛵 Frais de livraison : ${formatPrice(deliveryFee)}\n` +
         `*TOTAL : ${formatPrice(grandTotal)}*\n\n` +
         `👤 *Client :* ${delivery.nom}\n` +
         `📱 *Téléphone :* ${delivery.telephone}\n` +
@@ -71,12 +87,12 @@ export default function Cart({ locale }: { locale: string }) {
         `💳 *Paiement :* ${paiementLabel[delivery.paiement]?.fr}\n` +
         `⏰ *Livraison :* ${horaire}\n` +
         `${delivery.instructions ? `💬 *Instructions :* ${delivery.instructions}\n` : ''}` +
-        `\n_Commande passée depuis canteens-app.vercel.app_`
+        `\n🔗 *Assigner un livreur :*\n${dashboardLink}`
       : `🛵 *DELIVERY ORDER — THE CANTEEN'S*\n\n` +
         `📋 *Order N° :* ${orderNumber}\n\n` +
         `🍽️ *Order :*\n${lignes}\n\n` +
         `💰 Subtotal: ${formatPrice(totalAmount())}\n` +
-        `🛵 Delivery fee: ${formatPrice(DELIVERY_FEE)}\n` +
+        `🛵 Delivery fee: ${formatPrice(deliveryFee)}\n` +
         `*TOTAL: ${formatPrice(grandTotal)}*\n\n` +
         `👤 *Customer :* ${delivery.nom}\n` +
         `📱 *Phone :* ${delivery.telephone}\n` +
@@ -87,7 +103,7 @@ export default function Cart({ locale }: { locale: string }) {
         `💳 *Payment :* ${paiementLabel[delivery.paiement]?.en}\n` +
         `⏰ *Delivery :* ${horaire}\n` +
         `${delivery.instructions ? `💬 *Instructions :* ${delivery.instructions}\n` : ''}` +
-        `\n_Order placed from canteens-app.vercel.app_`
+        `\n🔗 *Assign driver :*\n${dashboardLink}`
 
     return encodeURIComponent(msg)
   }
@@ -110,8 +126,8 @@ export default function Cart({ locale }: { locale: string }) {
         heure_choisie: delivery.heureChoisie || null,
         mode_paiement: delivery.paiement,
         sous_total: subtotal,
-        frais_livraison: DELIVERY_FEE,
-        total: subtotal + DELIVERY_FEE,
+        frais_livraison: deliveryFee,
+        total: subtotal + deliveryFee,
         statut: 'en_attente',
       })
       .select()

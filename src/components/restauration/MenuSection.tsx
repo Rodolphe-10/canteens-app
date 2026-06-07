@@ -52,7 +52,7 @@ export default function MenuSection({ locale }: { locale: string }) {
         nameEn: row.name_en,
         descFr: row.desc_fr,
         descEn: row.desc_en,
-        price: row.price,
+        price: Number(row.price),
         category: row.category as MenuCategory,
         image: row.image,
         isPopular: row.is_popular,
