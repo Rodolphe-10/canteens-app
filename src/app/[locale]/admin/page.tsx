@@ -2,7 +2,8 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import Image from 'next/image'
-import { Lock } from 'lucide-react'
+import { ArrowRight, Lock } from 'lucide-react'
+import { mediaUrls } from '@/lib/media'
 import { menuCategories } from '@/data/menu'
 import Tooltip from '@/components/ui/Tooltip'
 import { cn } from '@/lib/utils'
@@ -1512,106 +1513,136 @@ export default function AdminDashboardPage() {
 
 
   if (!isAuthed) {
-    return (
-      <div className="flex min-h-screen flex-col items-center justify-center bg-[#0A0A0A] px-4">
-        <p className="text-xs uppercase tracking-[0.4em] text-white/30">
-          THE CANTEEN&apos;S
-        </p>
-        <p className="mt-1 text-[10px] uppercase tracking-[0.6em] text-tc-gold/50">
-          STAFF LOGIN
-        </p>
+    const pinKeypad = (
+      <>
+        <PinDots length={pin.length} error={pinError} />
+        <Lock className="my-6 h-8 w-8 text-white/10" strokeWidth={1.25} aria-hidden />
+        <div className="flex flex-col gap-3">
+          {KEYPAD_ROWS.map((row) => (
+            <div key={row.join('-')} className="flex justify-center gap-3">
+              {row.map((digit) => (
+                <button
+                  key={digit}
+                  type="button"
+                  onClick={() => appendDigit(digit)}
+                  className="flex h-16 w-16 cursor-pointer items-center justify-center rounded-xl border border-white/10 bg-white/[0.03] text-lg font-light text-tc-cream transition-colors hover:bg-white/[0.07]"
+                >
+                  {digit}
+                </button>
+              ))}
+            </div>
+          ))}
+          <div className="flex justify-center">
+            <button
+              type="button"
+              onClick={() => appendDigit('0')}
+              className="flex h-16 w-16 cursor-pointer items-center justify-center rounded-xl border border-white/10 bg-white/[0.03] text-lg font-light text-tc-cream transition-colors hover:bg-white/[0.07]"
+            >
+              0
+            </button>
+          </div>
+        </div>
+        <button
+          type="button"
+          onClick={clearPin}
+          className="mt-6 text-xs text-white/20 transition-colors hover:text-white/40"
+        >
+          ← Effacer
+        </button>
+      </>
+    )
 
-        {!selectedNom ? (
-          <>
-            <p className="mb-4 mt-8 text-xs uppercase tracking-widest text-white/40">
+    if (!selectedNom) {
+      return (
+        <div className="flex min-h-screen flex-col items-center justify-center bg-[#0A0A0A] px-4">
+          <Image
+            src={mediaUrls.logos.restaurant1}
+            alt="The Canteen's"
+            width={192}
+            height={64}
+            className="mb-2 h-16 w-48 object-contain brightness-0 invert"
+            priority
+          />
+          <div className="mx-auto mb-8 h-px w-12 bg-tc-gold/40" />
+
+          <p className="mb-8 text-[10px] uppercase tracking-[0.5em] text-white/25">
+            Espace Staff
+          </p>
+
+          <div className="w-full max-w-xs">
+            <p className="mb-4 text-center text-[10px] uppercase tracking-[0.3em] text-white/20">
               Qui êtes-vous ?
             </p>
 
             {loadingStaffList ? (
-              <div className="flex h-32 items-center justify-center">
-                <div className="h-8 w-8 animate-spin rounded-full border-2 border-white/10 border-t-tc-gold" />
+              <div className="space-y-2">
+                {Array.from({ length: 3 }).map((_, i) => (
+                  <div
+                    key={i}
+                    className="h-16 animate-pulse rounded-2xl bg-white/[0.03]"
+                  />
+                ))}
               </div>
             ) : staffList.length === 0 ? (
-              <p className="text-sm text-white/30">Aucun profil actif disponible.</p>
+              <p className="text-center text-sm text-white/30">Aucun profil actif disponible.</p>
             ) : (
-              <div className="max-h-64 w-full max-w-sm overflow-y-auto [scrollbar-width:thin] [scrollbar-color:rgba(255,255,255,0.15)_transparent]">
-                <div className="flex flex-col gap-2">
-                  {staffList.map((profile) => (
-                    <button
-                      key={profile.id}
-                      type="button"
-                      onClick={() => {
-                        setSelectedNom(profile.nom)
-                        setPin('')
-                        setPinError(false)
-                      }}
-                      className="w-full rounded-xl border border-white/5 bg-white/[0.03] px-6 py-3.5 text-left text-sm text-white/50 transition hover:border-white/15 hover:bg-white/[0.06] hover:text-tc-cream"
-                    >
-                      {profile.nom}
-                    </button>
-                  ))}
-                </div>
+              <div className="max-h-72 w-full space-y-2 overflow-y-auto pr-1 [scrollbar-width:thin] [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-white/10 [&::-webkit-scrollbar-track]:transparent [&::-webkit-scrollbar]:w-1">
+                {staffList.map((profile) => (
+                  <button
+                    key={profile.id}
+                    type="button"
+                    onClick={() => {
+                      setSelectedNom(profile.nom)
+                      setPin('')
+                      setPinError(false)
+                    }}
+                    className="group flex w-full items-center gap-4 rounded-2xl border border-white/[0.07] bg-white/[0.03] px-5 py-4 text-left transition-all duration-200 hover:border-tc-gold/30 hover:bg-tc-gold/5 hover:shadow-[0_0_20px_rgba(212,175,55,0.08)]"
+                  >
+                    <div className="flex h-9 w-9 items-center justify-center rounded-full border border-white/10 bg-white/5 text-sm font-medium text-white/40 transition-colors group-hover:border-tc-gold/30 group-hover:text-tc-gold">
+                      {profile.nom.charAt(0).toUpperCase()}
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-white/70 transition-colors group-hover:text-tc-cream">
+                        {profile.nom}
+                      </p>
+                    </div>
+                    <ArrowRight
+                      size={14}
+                      className="text-white/20 transition-all group-hover:translate-x-0.5 group-hover:text-tc-gold/50"
+                    />
+                  </button>
+                ))}
               </div>
             )}
-          </>
-        ) : (
-          <>
-            <button
-              type="button"
-              onClick={() => {
-                setSelectedNom(null)
-                setPin('')
-                setPinError(false)
-              }}
-              className="mb-6 flex items-center gap-1 text-xs text-white/30 transition-colors hover:text-white/60"
-            >
-              ← {selectedNom}
-            </button>
+          </div>
+        </div>
+      )
+    }
 
-            <p className="mb-1 text-lg font-medium text-tc-cream">
-              Bonjour {selectedNom}
-            </p>
-            <p className="mb-4 text-xs text-white/30">Entrez votre code PIN</p>
+    return (
+      <div className="flex min-h-screen w-full flex-col items-center justify-center bg-[#0A0A0A] px-4">
+        <button
+          type="button"
+          onClick={() => {
+            setSelectedNom(null)
+            setPin('')
+            setPinError(false)
+          }}
+          className="mx-auto mb-10 flex items-center gap-2 text-xs text-white/25 transition hover:text-white/50"
+        >
+          ← Changer de profil
+        </button>
 
-            <PinDots length={pin.length} error={pinError} />
+        <div className="flex w-full max-w-xs flex-col items-center">
+          <div className="mb-3 flex h-16 w-16 items-center justify-center rounded-full border border-tc-gold/20 bg-tc-gold/10 text-2xl font-bold text-tc-gold">
+            {selectedNom.charAt(0).toUpperCase()}
+          </div>
 
-            <Lock className="mt-12 h-12 w-12 text-white/20" strokeWidth={1.25} aria-hidden />
+          <p className="mb-1 text-xl font-medium text-tc-cream">{selectedNom}</p>
+          <p className="mb-8 text-xs tracking-wider text-white/25">Entrez votre code PIN</p>
 
-            <div className="mt-10 flex flex-col gap-3">
-              {KEYPAD_ROWS.map((row) => (
-                <div key={row.join('-')} className="flex justify-center gap-3">
-                  {row.map((digit) => (
-                    <button
-                      key={digit}
-                      type="button"
-                      onClick={() => appendDigit(digit)}
-                      className="flex h-16 w-16 cursor-pointer items-center justify-center rounded-xl border border-white/10 bg-white/[0.03] text-lg font-light text-tc-cream transition-colors hover:bg-white/[0.07]"
-                    >
-                      {digit}
-                    </button>
-                  ))}
-                </div>
-              ))}
-              <div className="flex justify-center">
-                <button
-                  type="button"
-                  onClick={() => appendDigit('0')}
-                  className="flex h-16 w-16 cursor-pointer items-center justify-center rounded-xl border border-white/10 bg-white/[0.03] text-lg font-light text-tc-cream transition-colors hover:bg-white/[0.07]"
-                >
-                  0
-                </button>
-              </div>
-            </div>
-
-            <button
-              type="button"
-              onClick={clearPin}
-              className="mt-8 text-xs text-white/20 transition-colors hover:text-white/40"
-            >
-              ← Effacer
-            </button>
-          </>
-        )}
+          {pinKeypad}
+        </div>
       </div>
     )
   }
