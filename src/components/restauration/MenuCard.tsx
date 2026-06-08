@@ -81,22 +81,17 @@ export default function MenuCard({
                     sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
                     onError={() => setImgError(true)}
                   />
-                  <Tooltip
-                    text={locale === 'fr' ? 'Voir l\'image' : 'View image'}
-                    position="top"
-                    wrapperClassName="absolute inset-0 z-[1] block"
+                  <button
+                    type="button"
+                    onClick={() => setIsLightboxOpen(true)}
+                    title={locale === 'fr' ? 'Voir l\'image' : 'View image'}
+                    className="absolute inset-0 z-[1] h-full w-full cursor-zoom-in"
+                    aria-label={
+                      locale === 'fr' ? 'Agrandir la photo du plat' : 'Enlarge dish photo'
+                    }
                   >
-                    <button
-                      type="button"
-                      onClick={() => setIsLightboxOpen(true)}
-                      className="h-full w-full cursor-zoom-in"
-                      aria-label={
-                        locale === 'fr' ? 'Agrandir la photo du plat' : 'Enlarge dish photo'
-                      }
-                    >
-                      <span className="sr-only">{name}</span>
-                    </button>
-                  </Tooltip>
+                    <span className="sr-only">{name}</span>
+                  </button>
                 </>
               ) : (
                 <div className="flex h-full w-full items-center justify-center bg-white/[0.03]">

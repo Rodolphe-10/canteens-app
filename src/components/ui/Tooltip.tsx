@@ -49,7 +49,9 @@ export default function Tooltip({
   }, [])
 
   if (!canHover) {
-    return <span className={cn('inline-flex', wrapperClassName)}>{children}</span>
+    return (
+      <span className={wrapperClassName ?? 'inline-flex'}>{children}</span>
+    )
   }
 
   const positionClasses = {
@@ -61,7 +63,7 @@ export default function Tooltip({
 
   return (
     <span
-      className={cn('relative inline-flex', wrapperClassName)}
+      className={wrapperClassName ?? 'relative inline-flex'}
       onPointerEnter={show}
       onPointerLeave={hide}
     >
