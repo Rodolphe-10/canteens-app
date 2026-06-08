@@ -1,8 +1,9 @@
 'use client'
 
-import { motion, useInView } from 'framer-motion'
+import { AnimatePresence, motion, useInView } from 'framer-motion'
 import Image from 'next/image'
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { X } from 'lucide-react'
 import { games as staticGames } from '@/data/games'
 import type { Game } from '@/data/games'
 import { createClient } from '@/lib/supabase/client'
@@ -52,8 +53,18 @@ type DbGame = {
 export default function GamesGrid({ locale }: { locale: string }) {
   const [activeFilter, setActiveFilter] = useState<GameCategory>('all')
   const [games, setGames] = useState<Game[]>(staticGames)
+  const [lightbox, setLightbox] = useState<{ src: string; name: string } | null>(null)
   const ref = useRef(null)
   const isInView = useInView(ref, { once: true, margin: '-80px' })
+
+  useEffect(() => {
+    if (!lightbox) return
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setLightbox(null)
+    }
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
+  }, [lightbox])
 
   const fetchGames = useCallback(async () => {
     const supabase = createClient()
@@ -152,7 +163,12 @@ export default function GamesGrid({ locale }: { locale: string }) {
 
               {/* Image */}
               {game.image ? (
-                <div className="relative h-52 w-full overflow-hidden">
+                <button
+                  type="button"
+                  onClick={() => setLightbox({ src: game.image!, name: game.name })}
+                  className="relative h-52 w-full overflow-hidden block cursor-zoom-in"
+                  aria-label={`Voir photo de ${game.name}`}
+                >
                   <Image
                     src={game.image}
                     alt={game.name}
@@ -161,7 +177,14 @@ export default function GamesGrid({ locale }: { locale: string }) {
                     sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
-                </div>
+                  <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                    <div className="rounded-full bg-black/50 p-3 backdrop-blur-sm">
+                      <svg className="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7" />
+                      </svg>
+                    </div>
+                  </div>
+                </button>
               ) : (
                 <div className="flex h-52 items-center justify-center bg-white/[0.03] text-4xl">
                   {game.category === 'vr' ? '🥽' : game.category === 'arcade' ? '🕹️' : game.category === 'sport' ? '🎱' : '🏎️'}
@@ -204,6 +227,50 @@ export default function GamesGrid({ locale }: { locale: string }) {
           ))}
         </motion.div>
       </div>
+
+      {/* Lightbox */}
+      <AnimatePresence>
+        {lightbox && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-sm p-4"
+            onClick={() => setLightbox(null)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className="relative max-w-3xl w-full"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <button
+                type="button"
+                onClick={() => setLightbox(null)}
+                className="absolute -top-10 right-0 text-white/60 hover:text-white transition-colors"
+                aria-label="Fermer"
+              >
+                <X size={28} />
+              </button>
+              <div className="relative w-full aspect-[4/3] overflow-hidden rounded-lg">
+                <Image
+                  src={lightbox.src}
+                  alt={lightbox.name}
+                  fill
+                  className="object-contain"
+                  sizes="100vw"
+                />
+              </div>
+              <p className="mt-3 text-center text-sm font-display tracking-wider text-white/70">
+                {lightbox.name}
+              </p>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </section>
   )
 }

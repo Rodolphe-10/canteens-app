@@ -33,28 +33,49 @@ const LAT = 3.89780
 const LNG = 11.52002
 const MAPS_URL = `https://www.google.com/maps?q=${LAT},${LNG}`
 
-const socialLinks = [
+const restaurantSocials = [
   {
     label: 'Instagram',
-    href: 'https://www.instagram.com/thecanteenslounge/',
+    href: 'https://www.instagram.com/thecanteenslounge?igsh=MWVyOWtqa3B3aXpsYg==',
     icon: <InstagramIcon />,
     color: 'hover:text-pink-400',
   },
   {
     label: 'Facebook',
-    href: 'https://www.facebook.com/the.canteens.lounge/',
+    href: 'https://www.facebook.com/share/14Nq62WUzpt/?mibextid=wwXIfr',
     icon: <FacebookIcon />,
     color: 'hover:text-blue-400',
   },
   {
     label: 'TikTok',
-    href: 'https://www.tiktok.com/@thecanteensgameroom',
+    href: 'https://www.tiktok.com/@the.canteens.lounge?_r=1&_t=ZS-972fTeNwaXd',
     icon: <TikTokIcon />,
     color: 'hover:text-white',
   },
   {
     label: 'WhatsApp',
     href: 'https://api.whatsapp.com/send?phone=237655867084',
+    icon: <WhatsAppIcon />,
+    color: 'hover:text-green-400',
+  },
+]
+
+const gameRoomSocials = [
+  {
+    label: 'Instagram',
+    href: 'https://www.instagram.com/thecanteensgameroom?utm_source=qr',
+    icon: <InstagramIcon />,
+    color: 'hover:text-pink-400',
+  },
+  {
+    label: 'TikTok',
+    href: 'https://www.tiktok.com/@the.canteens.game?_r=1',
+    icon: <TikTokIcon />,
+    color: 'hover:text-white',
+  },
+  {
+    label: 'WhatsApp',
+    href: 'https://api.whatsapp.com/send?phone=237677138318',
     icon: <WhatsAppIcon />,
     color: 'hover:text-green-400',
   },
@@ -108,37 +129,72 @@ export default function Footer({ locale }: { locale: string }) {
               className="flex items-center gap-2 text-sm text-tc-cream/60 hover:text-tc-gold transition-colors"
             >
               <Phone size={14} className="text-tc-gold" />
-              +237 655 867 084
+              <span>
+                <span className="text-tc-cream/30 text-xs mr-1">{locale === 'fr' ? 'Restaurant :' : 'Restaurant:'}</span>
+                +237 655 867 084
+              </span>
             </a>
-            <p className="text-xs text-tc-cream/40 mt-1">
-              {locale === 'fr' ? 'Game Room : ' : 'Game Room: '}
-              +237 677 138 318
-            </p>
+            <a
+              href="tel:+237677138318"
+              className="flex items-center gap-2 text-sm text-tc-cream/60 hover:text-tc-gold transition-colors"
+            >
+              <Phone size={14} className="text-tc-gold" />
+              <span>
+                <span className="text-tc-cream/30 text-xs mr-1">{locale === 'fr' ? 'Game Room :' : 'Game Room:'}</span>
+                +237 677 138 318
+              </span>
+            </a>
           </div>
 
           {/* Réseaux sociaux */}
-          <div className="flex flex-col gap-3">
+          <div className="flex flex-col gap-4">
             <h4 className="text-xs tracking-widest uppercase text-tc-gold mb-1">
               {locale === 'fr' ? 'Nous suivre' : 'Follow us'}
             </h4>
-            <div className="flex items-center gap-4 flex-wrap">
-              {socialLinks.map((social) => (
-                <Tooltip key={social.label} text={social.label} position="top">
-                  <a
-                    href={social.href}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    aria-label={social.label}
-                    className={`text-tc-cream/50 transition-all duration-200 ${social.color} hover:scale-110`}
-                  >
-                    {social.icon}
-                  </a>
-                </Tooltip>
-              ))}
+
+            {/* Restaurant */}
+            <div className="flex flex-col gap-1.5">
+              <p className="text-[10px] uppercase tracking-widest text-tc-cream/30">
+                Restaurant & Lounge
+              </p>
+              <div className="flex items-center gap-4">
+                {restaurantSocials.map((social) => (
+                  <Tooltip key={`resto-${social.label}`} text={social.label} position="top">
+                    <a
+                      href={social.href}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      aria-label={social.label}
+                      className={`text-tc-cream/50 transition-all duration-200 ${social.color} hover:scale-110`}
+                    >
+                      {social.icon}
+                    </a>
+                  </Tooltip>
+                ))}
+              </div>
             </div>
-            <p className="text-xs text-tc-cream/30 mt-2">
-              @thecanteenslounge · @thecanteensgameroom
-            </p>
+
+            {/* Game Room */}
+            <div className="flex flex-col gap-1.5">
+              <p className="text-[10px] uppercase tracking-widest text-tc-cream/30">
+                Game Room
+              </p>
+              <div className="flex items-center gap-4">
+                {gameRoomSocials.map((social) => (
+                  <Tooltip key={`game-${social.label}`} text={social.label} position="top">
+                    <a
+                      href={social.href}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      aria-label={social.label}
+                      className={`text-tc-cream/50 transition-all duration-200 ${social.color} hover:scale-110`}
+                    >
+                      {social.icon}
+                    </a>
+                  </Tooltip>
+                ))}
+              </div>
+            </div>
           </div>
         </div>
 
