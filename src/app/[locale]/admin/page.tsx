@@ -541,6 +541,7 @@ export default function AdminDashboardPage() {
   const [menuItems, setMenuItems] = useState<MenuItem[]>([])
   const [loadingMenu, setLoadingMenu] = useState(true)
   const [menuSearch, setMenuSearch] = useState('')
+  const [menuTypeFilter, setMenuTypeFilter] = useState<'food' | 'drink'>('food')
   const [menuCatFilter, setMenuCatFilter] = useState('all')
   const [menuModal, setMenuModal] = useState<'create' | 'edit' | null>(null)
   const [editingItem, setEditingItem] = useState<MenuItem | null>(null)
@@ -606,17 +607,29 @@ export default function AdminDashboardPage() {
     }
   }, [newFlyerPreviews])
 
-  const menuUniqueCategories = useMemo(
-    () => [...new Set(menuItems.map((i) => i.category))].sort(),
-    [menuItems],
-  )
+  const menuUniqueCategories = useMemo(() => {
+    const typeCats = new Set(
+      menuCategories
+        .filter((c) => c.type === menuTypeFilter)
+        .map((c) => c.id),
+    )
+    return [...new Set(menuItems.map((i) => i.category))]
+      .filter((cat) => typeCats.has(cat as string))
+      .sort()
+  }, [menuItems, menuTypeFilter])
 
   const adminMenuFiltered = useMemo(() => {
     const q = menuSearch.trim().toLowerCase()
+    const typeCats = new Set(
+      menuCategories
+        .filter((c) => c.type === menuTypeFilter)
+        .map((c) => c.id),
+    )
     return menuItems
+      .filter((i) => typeCats.has(i.category))
       .filter((i) => menuCatFilter === 'all' || i.category === menuCatFilter)
       .filter((i) => i.name_fr.toLowerCase().includes(q))
-  }, [menuItems, menuCatFilter, menuSearch])
+  }, [menuItems, menuTypeFilter, menuCatFilter, menuSearch])
 
   const availableTabs = useMemo(
     () => AVAILABLE_TABS[role ?? 'cm'],
@@ -1205,7 +1218,8 @@ export default function AdminDashboardPage() {
 
   const openCreateMenuItem = () => {
     setEditingItem(null)
-    setMenuForm({ is_visible: true, is_popular: false, category: 'plats-locaux' })
+    const defaultCat = menuTypeFilter === 'drink' ? 'cocktails' : 'plats-locaux'
+    setMenuForm({ is_visible: true, is_popular: false, category: defaultCat })
     setMenuImageFile(null)
     setMenuImagePreview(null)
     setMenuModal('create')
@@ -2150,7 +2164,43 @@ export default function AdminDashboardPage() {
                 onClick={openCreateMenuItem}
                 className="rounded-full border border-tc-gold/40 px-4 py-2 text-xs text-tc-gold transition hover:bg-tc-gold/10"
               >
-                + Ajouter un plat
+                {menuTypeFilter === 'food' ? '+ Ajouter un plat' : '+ Ajouter une boisson'}
+              </button>
+            </div>
+
+            {/* Sous-onglets Plats / Boissons */}
+            <div className="mt-4 flex gap-1 rounded-full bg-white/5 p-1 w-fit">
+              <button
+                type="button"
+                onClick={() => {
+                  setMenuTypeFilter('food')
+                  setMenuCatFilter('all')
+                  setMenuSearch('')
+                }}
+                className={cn(
+                  'rounded-full px-5 py-1.5 text-xs font-bold uppercase tracking-wider transition-all duration-200',
+                  menuTypeFilter === 'food'
+                    ? 'bg-tc-gold text-tc-black'
+                    : 'text-tc-cream/50 hover:text-tc-cream',
+                )}
+              >
+                🍽 Plats
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setMenuTypeFilter('drink')
+                  setMenuCatFilter('all')
+                  setMenuSearch('')
+                }}
+                className={cn(
+                  'rounded-full px-5 py-1.5 text-xs font-bold uppercase tracking-wider transition-all duration-200',
+                  menuTypeFilter === 'drink'
+                    ? 'bg-tc-gold text-tc-black'
+                    : 'text-tc-cream/50 hover:text-tc-cream',
+                )}
+              >
+                🍹 Boissons
               </button>
             </div>
 
@@ -2168,7 +2218,7 @@ export default function AdminDashboardPage() {
                 className={cn(FORM_INPUT_CLASS, 'max-w-[200px]')}
               >
                 <option value="all" className="bg-[#111]">
-                  Toutes
+                  Toutes les catégories
                 </option>
                 {menuUniqueCategories.map((cat) => (
                   <option key={cat} value={cat} className="bg-[#111]">
