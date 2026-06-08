@@ -562,8 +562,8 @@ export default function AdminDashboardPage() {
   const [activeGallery, setActiveGallery] = useState<string | null>(null)
   const [galleryPhotos, setGalleryPhotos] = useState<GalleryPhotoRow[]>([])
   const [loadingGallery, setLoadingGallery] = useState(false)
-  const [galleryUploadFile, setGalleryUploadFile] = useState<File | null>(null)
   const [uploadingGallery, setUploadingGallery] = useState(false)
+  const [galleryUploadProgress, setGalleryUploadProgress] = useState<{ done: number; total: number } | null>(null)
   const galleryFileRef = useRef<HTMLInputElement>(null)
   const [livreurs, setLivreurs] = useState<LivreurRow[]>([])
   const [loadingLivreurs, setLoadingLivreurs] = useState(true)
@@ -841,34 +841,42 @@ export default function AdminDashboardPage() {
     if (activeGallery) void fetchGalleryPhotos(activeGallery)
   }, [activeGallery, fetchGalleryPhotos])
 
-  const uploadGalleryPhoto = async (file: File) => {
-    if (!activeGallery) return
+  const uploadGalleryPhotos = async (files: File[]) => {
+    if (!activeGallery || files.length === 0) return
     setUploadingGallery(true)
-    const ext = file.name.split('.').pop() ?? 'jpg'
-    const path = `galleries/${activeGallery}/${Date.now()}.${ext}`
-    let imageUrl: string
-    try {
-      imageUrl = await uploadToStorage(file, path)
-    } catch (err) {
-      alert(err instanceof Error ? err.message : 'Erreur upload')
-      setUploadingGallery(false)
-      return
+    setGalleryUploadProgress({ done: 0, total: files.length })
+
+    let basePos = galleryPhotos.length
+    const errors: string[] = []
+
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i]
+      const ext = file.name.split('.').pop() ?? 'jpg'
+      const path = `galleries/${activeGallery}/${Date.now()}-${i}.${ext}`
+      let imageUrl: string
+      try {
+        imageUrl = await uploadToStorage(file, path)
+      } catch (err) {
+        errors.push(file.name)
+        setGalleryUploadProgress((p) => p ? { ...p, done: p.done + 1 } : null)
+        continue
+      }
+      const { error } = await supabase.from('gallery_photos').insert({
+        gallery_id: activeGallery,
+        image_url: imageUrl,
+        position: basePos++,
+      })
+      if (error) errors.push(file.name)
+      setGalleryUploadProgress((p) => p ? { ...p, done: p.done + 1 } : null)
     }
-    const nextPos = galleryPhotos.length
-    const { error } = await supabase.from('gallery_photos').insert({
-      gallery_id: activeGallery,
-      image_url: imageUrl,
-      position: nextPos,
-    })
-    if (error) {
-      alert(`Erreur : ${error.message}`)
-      setUploadingGallery(false)
-      return
-    }
+
     await fetchGalleryPhotos(activeGallery)
-    setGalleryUploadFile(null)
     if (galleryFileRef.current) galleryFileRef.current.value = ''
     setUploadingGallery(false)
+    setGalleryUploadProgress(null)
+    if (errors.length > 0) {
+      alert(`Erreur sur ${errors.length} fichier(s) : ${errors.join(', ')}`)
+    }
   }
 
   const deleteGalleryPhoto = async (id: string) => {
@@ -2454,13 +2462,11 @@ export default function AdminDashboardPage() {
                   ref={galleryFileRef}
                   type="file"
                   accept="image/*"
+                  multiple
                   className="hidden"
                   onChange={(e) => {
-                    const f = e.target.files?.[0]
-                    if (f) {
-                      setGalleryUploadFile(f)
-                      void uploadGalleryPhoto(f)
-                    }
+                    const files = Array.from(e.target.files ?? [])
+                    if (files.length > 0) void uploadGalleryPhotos(files)
                   }}
                 />
                 <button
@@ -2469,7 +2475,9 @@ export default function AdminDashboardPage() {
                   disabled={uploadingGallery}
                   className="mt-4 rounded-full border border-tc-gold/40 px-4 py-2 text-xs text-tc-gold transition hover:bg-tc-gold/10 disabled:opacity-50"
                 >
-                  {uploadingGallery ? 'Envoi…' : '+ Ajouter une photo'}
+                  {galleryUploadProgress
+                    ? `Envoi ${galleryUploadProgress.done}/${galleryUploadProgress.total}…`
+                    : '+ Ajouter des photos'}
                 </button>
 
                 {loadingGallery ? (
