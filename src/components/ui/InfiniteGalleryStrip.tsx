@@ -29,6 +29,7 @@ export default function InfiniteGalleryStrip({
   const [errors, setErrors] = useState<Record<string, boolean>>({})
   const [paused, setPaused] = useState(false)
   const touchStartX = useRef<number | null>(null)
+  const touchStartY = useRef<number | null>(null)
   const touchStartLeft = useRef(0)
   const slidesLengthRef = useRef(0)
 
@@ -83,23 +84,39 @@ export default function InfiniteGalleryStrip({
 
   const handleTouchStart = useCallback((e: React.TouchEvent) => {
     touchStartX.current = e.touches[0].clientX
+    touchStartY.current = e.touches[0].clientY
     touchStartLeft.current = scrollRef.current?.scrollLeft ?? 0
     setPaused(true)
   }, [])
 
-  const handleTouchMove = useCallback((e: React.TouchEvent) => {
-    if (touchStartX.current === null) return
-    const el = scrollRef.current
-    if (!el) return
-    const dx = touchStartX.current - e.touches[0].clientX
-    el.scrollLeft = touchStartLeft.current + dx
-  }, [])
+  // NOTE: onTouchMove is intentionally NOT handled via React synthetic events
+  // because those are passive by default — e.preventDefault() doesn't work.
+  // Instead we use a native non-passive listener (see useEffect below).
 
   const handleTouchEnd = useCallback(() => {
     touchStartX.current = null
+    touchStartY.current = null
     if (!isHovering.current) {
       window.setTimeout(() => setPaused(false), 3000)
     }
+  }, [])
+
+  // Native non-passive touchmove — allows preventDefault() to block page scroll
+  useEffect(() => {
+    const el = scrollRef.current
+    if (!el) return
+    const onTouchMove = (e: TouchEvent) => {
+      if (touchStartX.current === null) return
+      const dx = Math.abs(touchStartX.current - e.touches[0].clientX)
+      const dy = Math.abs((touchStartY.current ?? 0) - e.touches[0].clientY)
+      // Only hijack horizontal swipes
+      if (dx > dy) {
+        e.preventDefault()
+        el.scrollLeft = touchStartLeft.current + (touchStartX.current - e.touches[0].clientX)
+      }
+    }
+    el.addEventListener('touchmove', onTouchMove, { passive: false })
+    return () => el.removeEventListener('touchmove', onTouchMove)
   }, [])
 
   const nudge = useCallback((direction: -1 | 1) => {
@@ -178,7 +195,6 @@ export default function InfiniteGalleryStrip({
         className="overflow-hidden px-10 scrollbar-hide"
         style={{ scrollbarWidth: 'none' }}
         onTouchStart={handleTouchStart}
-        onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
       >
         <div className="flex w-max gap-4">
