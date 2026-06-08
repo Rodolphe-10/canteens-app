@@ -26,13 +26,21 @@ export default function InfiniteGalleryStrip({
 }: InfiniteGalleryStripProps) {
   const scrollRef = useRef<HTMLDivElement>(null)
   const isHovering = useRef(false)
-  const [errors, setErrors] = useState<Record<number, boolean>>({})
+  const [errors, setErrors] = useState<Record<string, boolean>>({})
   const [paused, setPaused] = useState(false)
+  const touchStartX = useRef<number | null>(null)
+  const touchStartLeft = useRef(0)
+  const slidesLengthRef = useRef(0)
 
   // Reset errors quand images change pour éviter les flashs noirs
   useEffect(() => {
     setErrors({})
   }, [images])
+
+  // Garde la longueur des slides dans un ref pour que l'animation ne redémarre pas
+  useEffect(() => {
+    slidesLengthRef.current = slides.length
+  })
   const [lightboxSrc, setLightboxSrc] = useState<string | null>(null)
   const [lightboxIndex, setLightboxIndex] = useState<number>(-1)
 
@@ -73,6 +81,27 @@ export default function InfiniteGalleryStrip({
         ? [...images, ...images, ...images, ...images]
         : [...images, ...images]
 
+  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    touchStartX.current = e.touches[0].clientX
+    touchStartLeft.current = scrollRef.current?.scrollLeft ?? 0
+    setPaused(true)
+  }, [])
+
+  const handleTouchMove = useCallback((e: React.TouchEvent) => {
+    if (touchStartX.current === null) return
+    const el = scrollRef.current
+    if (!el) return
+    const dx = touchStartX.current - e.touches[0].clientX
+    el.scrollLeft = touchStartLeft.current + dx
+  }, [])
+
+  const handleTouchEnd = useCallback(() => {
+    touchStartX.current = null
+    if (!isHovering.current) {
+      window.setTimeout(() => setPaused(false), 3000)
+    }
+  }, [])
+
   const nudge = useCallback((direction: -1 | 1) => {
     const el = scrollRef.current
     if (!el) return
@@ -85,10 +114,14 @@ export default function InfiniteGalleryStrip({
 
   useEffect(() => {
     const el = scrollRef.current
-    if (!el || slides.length === 0 || paused) return
+    if (!el || paused) return
 
     let raf = 0
     const step = () => {
+      if (slidesLengthRef.current === 0) {
+        raf = requestAnimationFrame(step)
+        return
+      }
       el.scrollLeft += 0.6
       const half = el.scrollWidth / 2
       if (half > 0 && el.scrollLeft >= half) {
@@ -98,7 +131,7 @@ export default function InfiniteGalleryStrip({
     }
     raf = requestAnimationFrame(step)
     return () => cancelAnimationFrame(raf)
-  }, [paused, slides.length])
+  }, [paused])
 
   if (slides.length === 0) return null
 
@@ -144,13 +177,18 @@ export default function InfiniteGalleryStrip({
         ref={scrollRef}
         className="overflow-hidden px-10 scrollbar-hide"
         style={{ scrollbarWidth: 'none' }}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
       >
         <div className="flex w-max gap-4">
           {slides.map((src, i) => {
             const realIndex = i % images.length
+            const copyNum = Math.floor(i / Math.max(images.length, 1))
+            const stableKey = `${src}-c${copyNum}`
             return (
               <button
-                key={`${src}-${i}`}
+                key={stableKey}
                 type="button"
                 onClick={() => openLightbox(src, realIndex)}
                 className={cn(
@@ -160,14 +198,14 @@ export default function InfiniteGalleryStrip({
                 aria-label={`Voir ${altPrefix} ${realIndex + 1}`}
               >
                 <div className={cn('absolute inset-0 bg-gradient-to-br', fallbackGradient)} />
-                {!errors[i] && (
+                {!errors[stableKey] && (
                   <Image
                     src={src}
                     alt={`${altPrefix} ${realIndex + 1}`}
                     fill
                     sizes="288px"
                     className="object-cover opacity-80 transition-all duration-500 group-hover:scale-105 group-hover:opacity-100"
-                    onError={() => setErrors((e) => ({ ...e, [i]: true }))}
+                    onError={() => setErrors((e) => ({ ...e, [stableKey]: true }))}
                   />
                 )}
                 {/* Overlay zoom au hover */}
