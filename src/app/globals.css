@@ -77,4 +77,10 @@
       animation: none !important;
     }
   }
+
+  /* Galerie swipe : défilement natif fluide avec inertie (momentum) */
+  .gallery-strip-scroll {
+    -webkit-overflow-scrolling: touch;
+    scroll-behavior: auto;
+  }
 }

@@ -16,6 +16,8 @@ export interface InfiniteGalleryStripProps {
   className?: string
 }
 
+const RESUME_AUTO_SCROLL_MS = 2200
+
 export default function InfiniteGalleryStrip({
   images,
   altPrefix,
@@ -26,36 +28,129 @@ export default function InfiniteGalleryStrip({
 }: InfiniteGalleryStripProps) {
   const scrollRef = useRef<HTMLDivElement>(null)
   const isHovering = useRef(false)
-  const [errors, setErrors] = useState<Record<string, boolean>>({})
-  const [paused, setPaused] = useState(false)
-  const touchStartX = useRef<number | null>(null)
-  const touchStartY = useRef<number | null>(null)
-  const touchStartLeft = useRef(0)
-  const isHorizontalSwipe = useRef(false)
+  const isInteracting = useRef(false)
+  const didSwipe = useRef(false)
+  const resumeTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const slidesLengthRef = useRef(0)
 
-  // Reset errors quand images change pour éviter les flashs noirs
+  const [errors, setErrors] = useState<Record<string, boolean>>({})
+  const [paused, setPaused] = useState(false)
+  const [lightboxSrc, setLightboxSrc] = useState<string | null>(null)
+  const [lightboxIndex, setLightboxIndex] = useState<number>(-1)
+
+  const slides =
+    images.length === 0
+      ? []
+      : images.length === 1
+        ? [...images, ...images, ...images, ...images]
+        : [...images, ...images]
+
   useEffect(() => {
     setErrors({})
   }, [images])
 
-  // Garde la longueur des slides dans un ref pour que l'animation ne redémarre pas
   useEffect(() => {
     slidesLengthRef.current = slides.length
   })
-  const [lightboxSrc, setLightboxSrc] = useState<string | null>(null)
-  const [lightboxIndex, setLightboxIndex] = useState<number>(-1)
+
+  const clearResumeTimer = useCallback(() => {
+    if (resumeTimer.current) {
+      clearTimeout(resumeTimer.current)
+      resumeTimer.current = null
+    }
+  }, [])
+
+  const scheduleResumeAutoScroll = useCallback(() => {
+    if (isHovering.current || lightboxSrc) return
+    clearResumeTimer()
+    resumeTimer.current = setTimeout(() => {
+      if (!isHovering.current && !isInteracting.current) {
+        setPaused(false)
+      }
+    }, RESUME_AUTO_SCROLL_MS)
+  }, [clearResumeTimer, lightboxSrc])
+
+  const pauseAutoScroll = useCallback(() => {
+    clearResumeTimer()
+    setPaused(true)
+  }, [clearResumeTimer])
+
+  const wrapInfiniteScroll = useCallback((el: HTMLDivElement) => {
+    const half = el.scrollWidth / 2
+    if (half > 0 && el.scrollLeft >= half) {
+      el.scrollLeft -= half
+    }
+  }, [])
+
+  // Native scroll + touch-action: pan-x → swipe fluide avec inertie (momentum)
+  useEffect(() => {
+    const el = scrollRef.current
+    if (!el) return
+
+    let scrollEndFallback: ReturnType<typeof setTimeout> | null = null
+
+    const onInteractionStart = () => {
+      isInteracting.current = true
+      didSwipe.current = false
+      pauseAutoScroll()
+    }
+
+    const onInteractionEnd = () => {
+      isInteracting.current = false
+      scheduleResumeAutoScroll()
+    }
+
+    const onScroll = () => {
+      wrapInfiniteScroll(el)
+      if (!isInteracting.current) return
+      didSwipe.current = true
+      if (scrollEndFallback) clearTimeout(scrollEndFallback)
+      scrollEndFallback = setTimeout(() => {
+        isInteracting.current = false
+        scheduleResumeAutoScroll()
+      }, 120)
+    }
+
+    el.addEventListener('touchstart', onInteractionStart, { passive: true })
+    el.addEventListener('touchend', onInteractionEnd, { passive: true })
+    el.addEventListener('touchcancel', onInteractionEnd, { passive: true })
+    el.addEventListener('pointerdown', onInteractionStart, { passive: true })
+    el.addEventListener('pointerup', onInteractionEnd, { passive: true })
+    el.addEventListener('pointercancel', onInteractionEnd, { passive: true })
+    el.addEventListener('scroll', onScroll, { passive: true })
+
+    if ('onscrollend' in el) {
+      el.addEventListener('scrollend', onInteractionEnd)
+    }
+
+    return () => {
+      el.removeEventListener('touchstart', onInteractionStart)
+      el.removeEventListener('touchend', onInteractionEnd)
+      el.removeEventListener('touchcancel', onInteractionEnd)
+      el.removeEventListener('pointerdown', onInteractionStart)
+      el.removeEventListener('pointerup', onInteractionEnd)
+      el.removeEventListener('pointercancel', onInteractionEnd)
+      el.removeEventListener('scroll', onScroll)
+      if ('onscrollend' in el) {
+        el.removeEventListener('scrollend', onInteractionEnd)
+      }
+      if (scrollEndFallback) clearTimeout(scrollEndFallback)
+    }
+  }, [pauseAutoScroll, scheduleResumeAutoScroll, wrapInfiniteScroll])
+
+  useEffect(() => () => clearResumeTimer(), [clearResumeTimer])
 
   const openLightbox = (src: string, realIndex: number) => {
+    if (didSwipe.current) return
     setLightboxSrc(src)
     setLightboxIndex(realIndex)
-    setPaused(true)
+    pauseAutoScroll()
   }
 
   const closeLightbox = () => {
     setLightboxSrc(null)
     setLightboxIndex(-1)
-    if (!isHovering.current) setPaused(false)
+    if (!isHovering.current) scheduleResumeAutoScroll()
   }
 
   const lightboxNav = (dir: -1 | 1) => {
@@ -76,63 +171,13 @@ export default function InfiniteGalleryStrip({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lightboxSrc, lightboxIndex, images])
 
-  const slides =
-    images.length === 0
-      ? []
-      : images.length === 1
-        ? [...images, ...images, ...images, ...images]
-        : [...images, ...images]
-
-  const handleTouchStart = useCallback((e: React.TouchEvent) => {
-    touchStartX.current = e.touches[0].clientX
-    touchStartY.current = e.touches[0].clientY
-    touchStartLeft.current = scrollRef.current?.scrollLeft ?? 0
-  }, [])
-
-  // NOTE: onTouchMove is intentionally NOT handled via React synthetic events
-  // because those are passive by default — e.preventDefault() doesn't work.
-  // Instead we use a native non-passive listener (see useEffect below).
-
-  const handleTouchEnd = useCallback(() => {
-    touchStartX.current = null
-    touchStartY.current = null
-    isHorizontalSwipe.current = false
-    if (!isHovering.current) {
-      window.setTimeout(() => setPaused(false), 3000)
-    }
-  }, [])
-
-  // Native non-passive touchmove — allows preventDefault() to block page scroll
-  useEffect(() => {
-    const el = scrollRef.current
-    if (!el) return
-    const onTouchMove = (e: TouchEvent) => {
-      if (touchStartX.current === null) return
-      const dx = Math.abs(touchStartX.current - e.touches[0].clientX)
-      const dy = Math.abs((touchStartY.current ?? 0) - e.touches[0].clientY)
-      // Only hijack horizontal swipes
-      if (dx > dy && dx > 8) {
-        if (!isHorizontalSwipe.current) {
-          isHorizontalSwipe.current = true
-          setPaused(true)
-        }
-        e.preventDefault()
-        el.scrollLeft = touchStartLeft.current + (touchStartX.current - e.touches[0].clientX)
-      }
-    }
-    el.addEventListener('touchmove', onTouchMove, { passive: false })
-    return () => el.removeEventListener('touchmove', onTouchMove)
-  }, [])
-
   const nudge = useCallback((direction: -1 | 1) => {
     const el = scrollRef.current
     if (!el) return
-    setPaused(true)
+    pauseAutoScroll()
     el.scrollBy({ left: direction * 320, behavior: 'smooth' })
-    if (!isHovering.current) {
-      window.setTimeout(() => setPaused(false), 4000)
-    }
-  }, [])
+    scheduleResumeAutoScroll()
+  }, [pauseAutoScroll, scheduleResumeAutoScroll])
 
   useEffect(() => {
     const el = scrollRef.current
@@ -149,15 +194,12 @@ export default function InfiniteGalleryStrip({
         return
       }
       el.scrollLeft += 0.6
-      const half = el.scrollWidth / 2
-      if (half > 0 && el.scrollLeft >= half) {
-        el.scrollLeft = 0
-      }
+      wrapInfiniteScroll(el)
       raf = requestAnimationFrame(step)
     }
     raf = requestAnimationFrame(step)
     return () => cancelAnimationFrame(raf)
-  }, [paused])
+  }, [paused, wrapInfiniteScroll])
 
   if (slides.length === 0) return null
 
@@ -167,11 +209,11 @@ export default function InfiniteGalleryStrip({
       className={cn('relative', className)}
       onMouseEnter={() => {
         isHovering.current = true
-        setPaused(true)
+        pauseAutoScroll()
       }}
       onMouseLeave={() => {
         isHovering.current = false
-        setPaused(false)
+        scheduleResumeAutoScroll()
       }}
     >
       {showArrows && (
@@ -201,11 +243,13 @@ export default function InfiniteGalleryStrip({
 
       <div
         ref={scrollRef}
-        className="overflow-x-auto overflow-y-hidden px-10 scrollbar-hide"
-        style={{ scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' }}
-        onTouchStart={handleTouchStart}
-        onTouchEnd={handleTouchEnd}
-        onTouchCancel={handleTouchEnd}
+        className="gallery-strip-scroll overflow-x-auto overflow-y-hidden px-10 scrollbar-hide"
+        style={{
+          scrollbarWidth: 'none',
+          WebkitOverflowScrolling: 'touch',
+          touchAction: 'pan-x',
+          overscrollBehaviorX: 'contain',
+        }}
       >
         <div className="flex w-max gap-4">
           {slides.map((src, i) => {
@@ -221,6 +265,7 @@ export default function InfiniteGalleryStrip({
                   'group relative h-48 w-72 shrink-0 overflow-hidden rounded-lg border border-white/5 transition-all duration-300 hover:border-white/20',
                   cardClassName,
                 )}
+                style={{ touchAction: 'pan-x' }}
                 aria-label={`Voir ${altPrefix} ${realIndex + 1}`}
               >
                 <div className={cn('absolute inset-0 bg-gradient-to-br', fallbackGradient)} />
@@ -230,12 +275,12 @@ export default function InfiniteGalleryStrip({
                     alt={`${altPrefix} ${realIndex + 1}`}
                     fill
                     sizes="288px"
-                    className="object-cover opacity-80 transition-all duration-500 group-hover:scale-105 group-hover:opacity-100"
+                    className="pointer-events-none object-cover opacity-80 transition-all duration-500 group-hover:scale-105 group-hover:opacity-100"
                     onError={() => setErrors((e) => ({ ...e, [stableKey]: true }))}
+                    draggable={false}
                   />
                 )}
-                {/* Overlay zoom au hover */}
-                <div className="absolute inset-0 flex items-center justify-center bg-black/0 opacity-0 transition-all duration-300 group-hover:bg-black/30 group-hover:opacity-100">
+                <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-black/0 opacity-0 transition-all duration-300 group-hover:bg-black/30 group-hover:opacity-100">
                   <ZoomIn size={22} className="text-white drop-shadow-lg" />
                 </div>
               </button>
@@ -245,7 +290,6 @@ export default function InfiniteGalleryStrip({
       </div>
     </div>
 
-    {/* Lightbox */}
     <AnimatePresence>
       {lightboxSrc && (
         <motion.div
@@ -256,7 +300,6 @@ export default function InfiniteGalleryStrip({
           className="fixed inset-0 z-[300] flex items-center justify-center bg-black/90 p-4"
           onClick={closeLightbox}
         >
-          {/* Bouton fermer */}
           <button
             type="button"
             onClick={closeLightbox}
@@ -266,7 +309,6 @@ export default function InfiniteGalleryStrip({
             <X size={18} />
           </button>
 
-          {/* Navigation gauche */}
           {images.length > 1 && (
             <button
               type="button"
@@ -278,7 +320,6 @@ export default function InfiniteGalleryStrip({
             </button>
           )}
 
-          {/* Image */}
           <motion.div
             key={lightboxSrc}
             initial={{ opacity: 0, scale: 0.95 }}
@@ -294,7 +335,6 @@ export default function InfiniteGalleryStrip({
               alt={`${altPrefix} ${lightboxIndex + 1}`}
               className="max-h-[85vh] max-w-[90vw] rounded-lg object-contain shadow-2xl"
             />
-            {/* Compteur */}
             {images.length > 1 && (
               <p className="mt-2 text-center text-xs text-white/40">
                 {lightboxIndex + 1} / {images.length}
@@ -302,7 +342,6 @@ export default function InfiniteGalleryStrip({
             )}
           </motion.div>
 
-          {/* Navigation droite */}
           {images.length > 1 && (
             <button
               type="button"
