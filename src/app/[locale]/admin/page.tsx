@@ -127,13 +127,31 @@ type ReservationRow = {
 
 type OrderRow = {
   id: string
+  order_number?: string
   client_nom: string
   client_telephone: string
-  total: number
-  mode_paiement: string
-  statut: OrderStatus
   quartier: string
+  adresse?: string
+  repere?: string
+  etage?: string
+  instructions?: string
+  horaire?: string
+  heure_choisie?: string
+  mode_paiement: string
+  sous_total?: number
+  frais_livraison?: number
+  total: number
+  statut: OrderStatus
   created_at: string
+}
+
+type OrderItem = {
+  id: string
+  order_id: string
+  nom: string
+  quantite: number
+  prix_unitaire: number
+  sous_total: number
 }
 
 type MenuItem = {
@@ -160,6 +178,15 @@ type DbGame = {
 }
 
 type GameFormState = Partial<DbGame> & { pricesRaw?: string }
+
+type MenuCategoryRow = {
+  id: string
+  label_fr: string
+  label_en: string
+  icon: string
+  type: 'food' | 'drink'
+  position: number
+}
 
 type LivreurRow = {
   id: string
@@ -528,6 +555,8 @@ export default function AdminDashboardPage() {
   const [orders, setOrders] = useState<OrderRow[]>([])
   const [updatingReservationId, setUpdatingReservationId] = useState<string | null>(null)
   const [updatingOrderId, setUpdatingOrderId] = useState<string | null>(null)
+  const [expandedOrderId, setExpandedOrderId] = useState<string | null>(null)
+  const [orderItemsCache, setOrderItemsCache] = useState<Record<string, OrderItem[]>>({})
   const [events, setEvents] = useState<EventRow[]>([])
   const [loadingEvents, setLoadingEvents] = useState(true)
   const [eventModal, setEventModal] = useState<'create' | 'edit' | null>(null)
@@ -550,6 +579,13 @@ export default function AdminDashboardPage() {
   const [menuImagePreview, setMenuImagePreview] = useState<string | null>(null)
   const [savingItem, setSavingItem] = useState(false)
   const menuImgRef = useRef<HTMLInputElement>(null)
+  const [menuSubTab, setMenuSubTab] = useState<'items' | 'categories'>('items')
+  const [menuCats, setMenuCats] = useState<MenuCategoryRow[]>([])
+  const [loadingMenuCats, setLoadingMenuCats] = useState(false)
+  const [menuCatModal, setMenuCatModal] = useState<'create' | 'edit' | null>(null)
+  const [editingMenuCat, setEditingMenuCat] = useState<MenuCategoryRow | null>(null)
+  const [menuCatForm, setMenuCatForm] = useState<Partial<MenuCategoryRow>>({})
+  const [savingMenuCat, setSavingMenuCat] = useState(false)
   const [gameItems, setGameItems] = useState<DbGame[]>([])
   const [loadingGames, setLoadingGames] = useState(true)
   const [gameModal, setGameModal] = useState<'create' | 'edit' | null>(null)
@@ -607,29 +643,37 @@ export default function AdminDashboardPage() {
     }
   }, [newFlyerPreviews])
 
+  // Source dynamique des catégories (Supabase) avec fallback statique
+  const activeCats = menuCats.length > 0
+    ? menuCats
+    : menuCategories.map((c, i) => ({
+        id: c.id,
+        label_fr: c.labelFr,
+        label_en: c.labelEn,
+        icon: c.icon,
+        type: c.type,
+        position: i,
+      }))
+
   const menuUniqueCategories = useMemo(() => {
-    const typeCats = new Set(
-      menuCategories
-        .filter((c) => c.type === menuTypeFilter)
-        .map((c) => c.id),
+    const typeCats = new Set<string>(
+      activeCats.filter((c) => c.type === menuTypeFilter).map((c) => c.id),
     )
     return [...new Set(menuItems.map((i) => i.category))]
-      .filter((cat) => typeCats.has(cat as string))
+      .filter((cat) => typeCats.has(cat))
       .sort()
-  }, [menuItems, menuTypeFilter])
+  }, [menuItems, menuTypeFilter, activeCats])
 
   const adminMenuFiltered = useMemo(() => {
     const q = menuSearch.trim().toLowerCase()
-    const typeCats = new Set(
-      menuCategories
-        .filter((c) => c.type === menuTypeFilter)
-        .map((c) => c.id),
+    const typeCats = new Set<string>(
+      activeCats.filter((c) => c.type === menuTypeFilter).map((c) => c.id),
     )
     return menuItems
       .filter((i) => typeCats.has(i.category))
       .filter((i) => menuCatFilter === 'all' || i.category === menuCatFilter)
       .filter((i) => i.name_fr.toLowerCase().includes(q))
-  }, [menuItems, menuTypeFilter, menuCatFilter, menuSearch])
+  }, [menuItems, menuTypeFilter, menuCatFilter, menuSearch, activeCats])
 
   const availableTabs = useMemo(
     () => AVAILABLE_TABS[role ?? 'cm'],
@@ -710,6 +754,15 @@ export default function AdminDashboardPage() {
     setLoadingOrders(false)
   }, [supabase])
 
+  const fetchOrderItems = useCallback(async (orderId: string) => {
+    if (orderItemsCache[orderId]) return // déjà chargé
+    const { data } = await supabase
+      .from('order_items')
+      .select('*')
+      .eq('order_id', orderId)
+    setOrderItemsCache((prev) => ({ ...prev, [orderId]: (data as OrderItem[]) ?? [] }))
+  }, [supabase, orderItemsCache])
+
   useEffect(() => {
     if (!isAuthed || !role) return
     if (role !== 'admin' && role !== 'chef') return
@@ -766,9 +819,25 @@ export default function AdminDashboardPage() {
     setLoadingMenu(false)
   }, [supabase])
 
+  const fetchMenuCategories = useCallback(async () => {
+    setLoadingMenuCats(true)
+    const { data } = await supabase
+      .from('menu_categories')
+      .select('*')
+      .order('type')
+      .order('position')
+    if (data && data.length > 0) {
+      setMenuCats(data as MenuCategoryRow[])
+    }
+    setLoadingMenuCats(false)
+  }, [supabase])
+
   useEffect(() => {
-    if (tab === 'menu' && isAuthed) void fetchMenuItems()
-  }, [tab, fetchMenuItems, isAuthed])
+    if (tab === 'menu' && isAuthed) {
+      void fetchMenuItems()
+      void fetchMenuCategories()
+    }
+  }, [tab, fetchMenuItems, fetchMenuCategories, isAuthed])
 
   const fetchGames = useCallback(async () => {
     setLoadingGames(true)
@@ -1088,7 +1157,9 @@ export default function AdminDashboardPage() {
           return
         }
       } else {
-        const { error } = await supabase.from('livreurs').insert(payload)
+        // UUID explicite pour éviter l'erreur de FK dans deliveries
+        const newId = crypto.randomUUID()
+        const { error } = await supabase.from('livreurs').insert({ id: newId, ...payload })
         if (error) {
           alert(`Erreur : ${error.message}`)
           return
@@ -1222,6 +1293,79 @@ export default function AdminDashboardPage() {
     }
     setMenuImagePreview(null)
     if (menuImgRef.current) menuImgRef.current.value = ''
+  }
+
+  const closeMenuCatModal = () => {
+    setMenuCatModal(null)
+    setEditingMenuCat(null)
+    setMenuCatForm({})
+  }
+
+  const openCreateMenuCat = (type: 'food' | 'drink') => {
+    setEditingMenuCat(null)
+    const pos = activeCats.filter((c) => c.type === type).length
+    setMenuCatForm({ type, icon: '', label_en: '', position: pos })
+    setMenuCatModal('create')
+  }
+
+  const openEditMenuCat = (cat: MenuCategoryRow) => {
+    setEditingMenuCat(cat)
+    setMenuCatForm({ ...cat })
+    setMenuCatModal('edit')
+  }
+
+  const saveMenuCategory = async () => {
+    if (!menuCatForm.label_fr?.trim() || !menuCatForm.type) return
+    setSavingMenuCat(true)
+    try {
+      if (menuCatModal === 'edit' && editingMenuCat) {
+        const { error } = await supabase
+          .from('menu_categories')
+          .update({
+            label_fr: menuCatForm.label_fr.trim(),
+            label_en: menuCatForm.label_en?.trim() ?? '',
+            icon: menuCatForm.icon ?? '',
+            type: menuCatForm.type,
+            position: menuCatForm.position ?? 0,
+          })
+          .eq('id', editingMenuCat.id)
+        if (error) { alert(`Erreur : ${error.message}`); return }
+      } else {
+        const id = menuCatForm.label_fr
+          .trim()
+          .toLowerCase()
+          .normalize('NFD')
+          .replace(/[̀-ͯ]/g, '')
+          .replace(/\s+/g, '-')
+          .replace(/[^a-z0-9-]/g, '')
+          .replace(/-+/g, '-')
+        const pos = menuCatForm.position ?? activeCats.filter((c) => c.type === menuCatForm.type).length
+        const { error } = await supabase.from('menu_categories').insert({
+          id,
+          label_fr: menuCatForm.label_fr.trim(),
+          label_en: menuCatForm.label_en?.trim() ?? '',
+          icon: menuCatForm.icon ?? '',
+          type: menuCatForm.type,
+          position: pos,
+        })
+        if (error) { alert(`Erreur : ${error.message}`); return }
+      }
+      await fetchMenuCategories()
+      closeMenuCatModal()
+    } finally {
+      setSavingMenuCat(false)
+    }
+  }
+
+  const deleteMenuCategory = async (id: string) => {
+    const count = menuItems.filter((i) => i.category === id).length
+    const msg = count > 0
+      ? `Cette catégorie contient ${count} article(s). Supprimer quand même ? Les articles resteront mais n'auront plus de catégorie valide.`
+      : 'Supprimer cette catégorie ?'
+    if (!window.confirm(msg)) return
+    const { error } = await supabase.from('menu_categories').delete().eq('id', id)
+    if (error) { alert(`Erreur : ${error.message}`); return }
+    setMenuCats((prev) => prev.filter((c) => c.id !== id))
   }
 
   const openCreateMenuItem = () => {
@@ -1888,136 +2032,192 @@ export default function AdminDashboardPage() {
           ) : reservations.length === 0 ? (
             <p className="text-center text-sm text-white/30">Aucune réservation.</p>
           ) : (
-            <div className="space-y-4">
-              {reservations.map((r) => {
-                const statusConfig = {
-                  nouveau: {
-                    color: 'border-amber-500/40 bg-amber-500/5',
-                    badge:
-                      'bg-amber-500/20 text-amber-400 border-amber-500/30',
-                    label: 'Nouveau',
-                  },
-                  confirme: {
-                    color: 'border-emerald-500/40 bg-emerald-500/5',
-                    badge:
-                      'bg-emerald-500/20 text-emerald-400 border-emerald-500/30',
-                    label: 'Confirmé',
-                  },
-                  annule: {
-                    color: 'border-red-500/30 bg-red-500/5',
-                    badge: 'bg-red-500/20 text-red-400 border-red-500/30',
-                    label: 'Annulé',
-                  },
-                }[r.statut]
+            <div className="space-y-6">
+              {(() => {
+                const monthNames = [
+                  'Janvier','Février','Mars','Avril','Mai','Juin',
+                  'Juillet','Août','Septembre','Octobre','Novembre','Décembre',
+                ]
+                const groups: { key: string; label: string; items: typeof reservations }[] = []
+                const groupMap = new Map<string, typeof reservations>()
+                for (const r of reservations) {
+                  const d = new Date(r.created_at)
+                  const gKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+                  const gLabel = `${monthNames[d.getMonth()]} ${d.getFullYear()}`
+                  if (!groupMap.has(gKey)) {
+                    groupMap.set(gKey, [])
+                    groups.push({ key: gKey, label: gLabel, items: groupMap.get(gKey)! })
+                  }
+                  groupMap.get(gKey)!.push(r)
+                }
+                return groups.map(({ key: gKey, label: gLabel, items }) => (
+                  <div key={gKey}>
+                    {/* Month / year header */}
+                    <div className="mb-3 flex items-center gap-3">
+                      <span className="text-xs font-semibold uppercase tracking-widest text-white/30">
+                        📅 {gLabel}
+                      </span>
+                      <span className="rounded-full bg-white/5 px-2 py-0.5 text-[10px] text-white/25">
+                        {items.length} réservation{items.length > 1 ? 's' : ''}
+                      </span>
+                      <div className="flex-1 border-t border-white/5" />
+                    </div>
 
-                const dateObj = new Date(r.created_at)
-                const timeAgo = Math.floor(
-                  (Date.now() - dateObj.getTime()) / 60000,
-                )
-                const timeLabel =
-                  timeAgo < 60
-                    ? `Il y a ${timeAgo} min`
-                    : timeAgo < 1440
-                      ? `Il y a ${Math.floor(timeAgo / 60)}h`
-                      : `Il y a ${Math.floor(timeAgo / 1440)}j`
+                    <div className="space-y-4">
+                      {items.map((r) => {
+                        const statusConfig = {
+                          nouveau: {
+                            color: 'border-amber-500/40 bg-amber-500/5',
+                            badge: 'bg-amber-500/20 text-amber-400 border-amber-500/30',
+                            label: 'Nouveau',
+                          },
+                          confirme: {
+                            color: 'border-emerald-500/40 bg-emerald-500/5',
+                            badge: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30',
+                            label: 'Confirmé',
+                          },
+                          annule: {
+                            color: 'border-red-500/30 bg-red-500/5',
+                            badge: 'bg-red-500/20 text-red-400 border-red-500/30',
+                            label: 'Annulé',
+                          },
+                        }[r.statut]
 
-                return (
-                  <article
-                    key={r.id}
-                    className={cn(
-                      'rounded-2xl border p-5 transition-all',
-                      statusConfig.color,
-                    )}
-                  >
-                    <div className="mb-4 flex items-start justify-between gap-3">
-                      <div>
-                        <div className="mb-1 flex items-center gap-2">
-                          <h3 className="text-base font-semibold text-tc-cream">
-                            {r.nom}
-                          </h3>
-                          <span
+                        const dateObj = new Date(r.created_at)
+                        const timeAgo = Math.floor(
+                          (Date.now() - dateObj.getTime()) / 60000,
+                        )
+                        const timeLabel =
+                          timeAgo < 60
+                            ? `Il y a ${timeAgo} min`
+                            : timeAgo < 1440
+                              ? `Il y a ${Math.floor(timeAgo / 60)}h`
+                              : `Il y a ${Math.floor(timeAgo / 1440)}j`
+
+                        return (
+                          <article
+                            key={r.id}
                             className={cn(
-                              'rounded-full border px-2.5 py-0.5 text-[10px] font-medium uppercase tracking-wider',
-                              statusConfig.badge,
+                              'rounded-2xl border p-5 transition-all',
+                              statusConfig.color,
                             )}
                           >
-                            {statusConfig.label}
-                          </span>
-                        </div>
-                        <a
-                          href={`tel:${r.telephone}`}
-                          className="text-sm text-tc-gold hover:underline"
-                        >
-                          📞 {r.telephone}
-                        </a>
-                      </div>
-                      <span className="shrink-0 text-[10px] text-white/25">
-                        {timeLabel}
-                      </span>
-                    </div>
+                            {/* Header */}
+                            <div className="mb-4 flex items-start justify-between gap-3">
+                              <div>
+                                <div className="mb-1 flex flex-wrap items-center gap-2">
+                                  <h3 className="text-base font-semibold text-tc-cream">
+                                    {r.nom}
+                                  </h3>
+                                  <span
+                                    className={cn(
+                                      'rounded-full border px-2.5 py-0.5 text-[10px] font-medium uppercase tracking-wider',
+                                      statusConfig.badge,
+                                    )}
+                                  >
+                                    {statusConfig.label}
+                                  </span>
+                                </div>
+                                <a
+                                  href={`tel:${r.telephone}`}
+                                  className="text-sm text-tc-gold hover:underline"
+                                >
+                                  📞 {r.telephone}
+                                </a>
+                              </div>
+                              <div className="text-right">
+                                <p className="font-mono text-[10px] text-white/20">
+                                  {dateObj.toLocaleDateString('fr-FR', {
+                                    day: '2-digit',
+                                    month: 'short',
+                                    year: 'numeric',
+                                  })}
+                                </p>
+                                <p className="mt-0.5 text-[10px] text-white/25">{timeLabel}</p>
+                              </div>
+                            </div>
 
-                    <div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
-                      <div className="rounded-xl bg-white/[0.04] p-3 text-center">
-                        <p className="mb-1 text-[10px] uppercase tracking-wider text-white/30">
-                          Date
-                        </p>
-                        <p className="text-sm font-medium text-tc-cream">
-                          {r.date_souhaitee}
-                        </p>
-                      </div>
-                      <div className="rounded-xl bg-white/[0.04] p-3 text-center">
-                        <p className="mb-1 text-[10px] uppercase tracking-wider text-white/30">
-                          Heure
-                        </p>
-                        <p className="text-sm font-medium text-tc-cream">
-                          {r.heure_arrivee}
-                        </p>
-                      </div>
-                      <div className="rounded-xl bg-white/[0.04] p-3 text-center">
-                        <p className="mb-1 text-[10px] uppercase tracking-wider text-white/30">
-                          Personnes
-                        </p>
-                        <p className="text-2xl font-bold text-tc-gold">
-                          {r.nombre_personnes}
-                        </p>
-                      </div>
-                      <div className="rounded-xl bg-white/[0.04] p-3 text-center">
-                        <p className="mb-1 text-[10px] uppercase tracking-wider text-white/30">
-                          Espace
-                        </p>
-                        <p className="text-sm font-medium capitalize text-tc-cream">
-                          {r.espace}
-                        </p>
-                      </div>
-                    </div>
+                            {/* Details grid */}
+                            <div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+                              <div className="rounded-xl bg-white/[0.04] p-3 text-center">
+                                <p className="mb-1 text-[10px] uppercase tracking-wider text-white/30">
+                                  Date souhaitée
+                                </p>
+                                <p className="text-sm font-medium text-tc-cream">
+                                  {r.date_souhaitee}
+                                </p>
+                              </div>
+                              <div className="rounded-xl bg-white/[0.04] p-3 text-center">
+                                <p className="mb-1 text-[10px] uppercase tracking-wider text-white/30">
+                                  Heure d&apos;arrivée
+                                </p>
+                                <p className="text-sm font-medium text-tc-cream">
+                                  {r.heure_arrivee}
+                                </p>
+                              </div>
+                              <div className="rounded-xl bg-white/[0.04] p-3 text-center">
+                                <p className="mb-1 text-[10px] uppercase tracking-wider text-white/30">
+                                  Personnes
+                                </p>
+                                <p className="text-2xl font-bold text-tc-gold">
+                                  {r.nombre_personnes}
+                                </p>
+                              </div>
+                              <div className="rounded-xl bg-white/[0.04] p-3 text-center">
+                                <p className="mb-1 text-[10px] uppercase tracking-wider text-white/30">
+                                  Espace
+                                </p>
+                                <p className="text-sm font-medium capitalize text-tc-cream">
+                                  {r.espace}
+                                </p>
+                              </div>
+                            </div>
 
-                    {r.statut === 'nouveau' ? (
-                      <div className="flex gap-2 border-t border-white/5 pt-3">
-                        <button
-                          type="button"
-                          disabled={updatingReservationId === r.id}
-                          onClick={() =>
-                            void updateReservationStatus(r.id, 'confirme')
-                          }
-                          className="flex-1 rounded-full bg-emerald-600/80 py-2.5 text-sm font-medium text-white transition hover:bg-emerald-600 disabled:opacity-50"
-                        >
-                          ✓ Confirmer
-                        </button>
-                        <button
-                          type="button"
-                          disabled={updatingReservationId === r.id}
-                          onClick={() =>
-                            void updateReservationStatus(r.id, 'annule')
-                          }
-                          className="flex-1 rounded-full border border-red-400/30 py-2.5 text-sm text-red-400 transition hover:bg-red-500/10 disabled:opacity-50"
-                        >
-                          ✗ Annuler
-                        </button>
-                      </div>
-                    ) : null}
-                  </article>
-                )
-              })}
+                            {/* Actions */}
+                            {r.statut === 'nouveau' ? (
+                              <div className="flex gap-2 border-t border-white/5 pt-3">
+                                <button
+                                  type="button"
+                                  disabled={updatingReservationId === r.id}
+                                  onClick={() =>
+                                    void updateReservationStatus(r.id, 'confirme')
+                                  }
+                                  className="flex-1 rounded-full bg-emerald-600/80 py-2.5 text-sm font-medium text-white transition hover:bg-emerald-600 disabled:opacity-50"
+                                >
+                                  ✓ Confirmer
+                                </button>
+                                <button
+                                  type="button"
+                                  disabled={updatingReservationId === r.id}
+                                  onClick={() =>
+                                    void updateReservationStatus(r.id, 'annule')
+                                  }
+                                  className="flex-1 rounded-full border border-red-400/30 py-2.5 text-sm text-red-400 transition hover:bg-red-500/10 disabled:opacity-50"
+                                >
+                                  ✗ Annuler
+                                </button>
+                              </div>
+                            ) : r.statut === 'confirme' ? (
+                              <div className="flex gap-2 border-t border-white/5 pt-3">
+                                <button
+                                  type="button"
+                                  disabled={updatingReservationId === r.id}
+                                  onClick={() =>
+                                    void updateReservationStatus(r.id, 'annule')
+                                  }
+                                  className="w-full rounded-full border border-red-400/30 py-2 text-xs text-red-400 transition hover:bg-red-500/10 disabled:opacity-50"
+                                >
+                                  ✗ Annuler la réservation
+                                </button>
+                              </div>
+                            ) : null}
+                          </article>
+                        )
+                      })}
+                    </div>
+                  </div>
+                ))
+              })()}
             </div>
           )
         ) : tab === 'orders' ? (
@@ -2026,295 +2226,502 @@ export default function AdminDashboardPage() {
           ) : orders.length === 0 ? (
             <p className="text-center text-sm text-white/30">Aucune commande.</p>
           ) : (
-            <div className="space-y-4">
-              {orders.map((o) => {
-                const statusColors: Record<OrderStatus, string> = {
-                  en_attente: 'border-amber-500/40 bg-amber-500/5',
-                  confirme: 'border-blue-500/40 bg-blue-500/5',
-                  en_preparation: 'border-purple-500/40 bg-purple-500/5',
-                  en_livraison: 'border-tc-game-cyan/40 bg-tc-game-cyan/5',
-                  livre: 'border-emerald-500/40 bg-emerald-500/5',
+            <div className="space-y-6">
+              {(() => {
+                const monthNames = [
+                  'Janvier','Février','Mars','Avril','Mai','Juin',
+                  'Juillet','Août','Septembre','Octobre','Novembre','Décembre',
+                ]
+                const groups: { key: string; label: string; items: typeof orders }[] = []
+                const groupMap = new Map<string, typeof orders>()
+                for (const o of orders) {
+                  const d = new Date(o.created_at)
+                  const gKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+                  const gLabel = `${monthNames[d.getMonth()]} ${d.getFullYear()}`
+                  if (!groupMap.has(gKey)) {
+                    groupMap.set(gKey, [])
+                    groups.push({ key: gKey, label: gLabel, items: groupMap.get(gKey)! })
+                  }
+                  groupMap.get(gKey)!.push(o)
                 }
-                const nextStatus =
-                  orderStatusFlow[orderStatusFlow.indexOf(o.statut) + 1]
-                const dateObj = new Date(o.created_at)
-                const timeAgo = Math.floor(
-                  (Date.now() - dateObj.getTime()) / 60000,
-                )
-                const timeLabel =
-                  timeAgo < 60
-                    ? `Il y a ${timeAgo} min`
-                    : timeAgo < 1440
-                      ? `Il y a ${Math.floor(timeAgo / 60)}h`
-                      : `Il y a ${Math.floor(timeAgo / 1440)}j`
-
-                return (
-                  <article
-                    key={o.id}
-                    className={cn(
-                      'rounded-2xl border p-5 transition-all',
-                      statusColors[o.statut],
-                    )}
-                  >
-                    <div className="mb-4 flex items-start justify-between gap-3">
-                      <div>
-                        <p className="mb-1 font-mono text-xs text-white/30">
-                          #{o.id.slice(0, 8).toUpperCase()}
-                        </p>
-                        <h3 className="text-base font-semibold text-tc-cream">
-                          {o.client_nom}
-                        </h3>
-                        <a
-                          href={`tel:${o.client_telephone}`}
-                          className="text-sm text-tc-gold hover:underline"
-                        >
-                          📞 {o.client_telephone}
-                        </a>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-2xl font-bold text-tc-cream">
-                          {formatAmount(o.total)}
-                        </p>
-                        <p className="mt-1 text-[10px] text-white/25">{timeLabel}</p>
-                      </div>
+                return groups.map(({ key: gKey, label: gLabel, items }) => (
+                  <div key={gKey}>
+                    {/* Month / year header */}
+                    <div className="mb-3 flex items-center gap-3">
+                      <span className="text-xs font-semibold uppercase tracking-widest text-white/30">
+                        📅 {gLabel}
+                      </span>
+                      <span className="rounded-full bg-white/5 px-2 py-0.5 text-[10px] text-white/25">
+                        {items.length} commande{items.length > 1 ? 's' : ''}
+                      </span>
+                      <div className="flex-1 border-t border-white/5" />
                     </div>
 
-                    <div className="mb-4 flex flex-wrap gap-2">
-                      <span className="rounded-full border border-white/10 bg-white/[0.06] px-3 py-1 text-xs text-white/60">
-                        📍 {o.quartier}
-                      </span>
-                      <span className="rounded-full border border-white/10 bg-white/[0.06] px-3 py-1 text-xs text-white/60">
-                        💳 {o.mode_paiement}
-                      </span>
-                    </div>
+                    <div className="space-y-4">
+                      {items.map((o) => {
+                        const statusColors: Record<OrderStatus, string> = {
+                          en_attente: 'border-amber-500/40 bg-amber-500/5',
+                          confirme: 'border-blue-500/40 bg-blue-500/5',
+                          en_preparation: 'border-purple-500/40 bg-purple-500/5',
+                          en_livraison: 'border-tc-game-cyan/40 bg-tc-game-cyan/5',
+                          livre: 'border-emerald-500/40 bg-emerald-500/5',
+                        }
+                        const nextStatus =
+                          orderStatusFlow[orderStatusFlow.indexOf(o.statut) + 1]
+                        const dateObj = new Date(o.created_at)
+                        const timeAgo = Math.floor(
+                          (Date.now() - dateObj.getTime()) / 60000,
+                        )
+                        const timeLabel =
+                          timeAgo < 60
+                            ? `Il y a ${timeAgo} min`
+                            : timeAgo < 1440
+                              ? `Il y a ${Math.floor(timeAgo / 60)}h`
+                              : `Il y a ${Math.floor(timeAgo / 1440)}j`
+                        const isExpanded = expandedOrderId === o.id
+                        const cachedItems = orderItemsCache[o.id]
 
-                    <div className="mb-4 flex flex-wrap items-center gap-1">
-                      {orderStatusFlow.map((status, index) => {
-                        const currentIndex = orderStatusFlow.indexOf(o.statut)
-                        const done = index <= currentIndex
-                        const active = index === currentIndex
                         return (
-                          <div key={status} className="flex items-center gap-1">
-                            <span
-                              className={cn(
-                                'rounded-full px-2.5 py-1 text-[9px] font-medium uppercase tracking-wider transition-colors',
-                                active
-                                  ? 'border border-tc-gold/30 bg-tc-gold/25 text-tc-gold'
-                                  : done
-                                    ? 'bg-emerald-500/15 text-emerald-400'
-                                    : 'bg-white/[0.03] text-white/20',
-                              )}
-                            >
-                              {orderStatusLabel[status]}
-                            </span>
-                            {index < orderStatusFlow.length - 1 ? (
-                              <span
-                                className={cn(
-                                  'text-[10px]',
-                                  index < currentIndex
-                                    ? 'text-emerald-400/50'
-                                    : 'text-white/10',
+                          <article
+                            key={o.id}
+                            className={cn(
+                              'rounded-2xl border p-5 transition-all',
+                              statusColors[o.statut],
+                            )}
+                          >
+                            {/* Header : numéro + client + prix */}
+                            <div className="mb-4 flex items-start justify-between gap-3">
+                              <div>
+                                <div className="mb-1 flex flex-wrap items-center gap-2">
+                                  <p className="font-mono text-xs font-bold text-tc-gold/80">
+                                    {o.order_number ?? `#${o.id.slice(0, 8).toUpperCase()}`}
+                                  </p>
+                                  <span className="text-white/20">·</span>
+                                  <p className="font-mono text-[10px] text-white/20">
+                                    {dateObj.toLocaleDateString('fr-FR', {
+                                      day: '2-digit',
+                                      month: 'short',
+                                      year: 'numeric',
+                                    })}
+                                  </p>
+                                </div>
+                                <h3 className="text-base font-semibold text-tc-cream">
+                                  {o.client_nom}
+                                </h3>
+                                <a
+                                  href={`tel:${o.client_telephone}`}
+                                  className="text-sm text-tc-gold hover:underline"
+                                >
+                                  📞 {o.client_telephone}
+                                </a>
+                              </div>
+                              <div className="text-right">
+                                <p className="text-2xl font-bold text-tc-cream">
+                                  {formatAmount(o.total)}
+                                </p>
+                                {(o.sous_total != null || o.frais_livraison != null) && (
+                                  <div className="mt-1 space-y-0.5">
+                                    {o.sous_total != null && (
+                                      <p className="text-[10px] text-white/30">
+                                        Articles : {formatAmount(o.sous_total)}
+                                      </p>
+                                    )}
+                                    {o.frais_livraison != null && (
+                                      <p className="text-[10px] text-white/30">
+                                        Livraison : {formatAmount(o.frais_livraison)}
+                                      </p>
+                                    )}
+                                  </div>
                                 )}
-                              >
-                                →
+                                <p className="mt-1 text-[10px] text-white/25">{timeLabel}</p>
+                              </div>
+                            </div>
+
+                            {/* Tags */}
+                            <div className="mb-4 flex flex-wrap gap-2">
+                              <span className="rounded-full border border-white/10 bg-white/[0.06] px-3 py-1 text-xs text-white/60">
+                                📍 {o.quartier}
                               </span>
+                              <span className="rounded-full border border-white/10 bg-white/[0.06] px-3 py-1 text-xs text-white/60">
+                                💳 {o.mode_paiement}
+                              </span>
+                            </div>
+
+                            {/* Status pipeline */}
+                            <div className="mb-4 flex flex-wrap items-center gap-1">
+                              {orderStatusFlow.map((status, index) => {
+                                const currentIndex = orderStatusFlow.indexOf(o.statut)
+                                const done = index <= currentIndex
+                                const active = index === currentIndex
+                                return (
+                                  <div key={status} className="flex items-center gap-1">
+                                    <span
+                                      className={cn(
+                                        'rounded-full px-2.5 py-1 text-[9px] font-medium uppercase tracking-wider transition-colors',
+                                        active
+                                          ? 'border border-tc-gold/30 bg-tc-gold/25 text-tc-gold'
+                                          : done
+                                            ? 'bg-emerald-500/15 text-emerald-400'
+                                            : 'bg-white/[0.03] text-white/20',
+                                      )}
+                                    >
+                                      {orderStatusLabel[status]}
+                                    </span>
+                                    {index < orderStatusFlow.length - 1 ? (
+                                      <span
+                                        className={cn(
+                                          'text-[10px]',
+                                          index < currentIndex
+                                            ? 'text-emerald-400/50'
+                                            : 'text-white/10',
+                                        )}
+                                      >
+                                        →
+                                      </span>
+                                    ) : null}
+                                  </div>
+                                )
+                              })}
+                            </div>
+
+                            {/* Articles commandés (expandable) */}
+                            <div className="mb-3">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  if (isExpanded) {
+                                    setExpandedOrderId(null)
+                                  } else {
+                                    setExpandedOrderId(o.id)
+                                    void fetchOrderItems(o.id)
+                                  }
+                                }}
+                                className="flex w-full items-center justify-between rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-2 text-xs text-white/50 transition hover:bg-white/[0.06] hover:text-white/70"
+                              >
+                                <span>🛒 Articles commandés</span>
+                                <span
+                                  className={cn(
+                                    'text-[10px] transition-transform',
+                                    isExpanded ? 'rotate-180' : '',
+                                  )}
+                                >
+                                  ▾
+                                </span>
+                              </button>
+
+                              {isExpanded && (
+                                <div className="mt-2 rounded-xl border border-white/5 bg-white/[0.02] p-3">
+                                  {cachedItems === undefined ? (
+                                    <p className="text-center text-xs text-white/30">
+                                      Chargement…
+                                    </p>
+                                  ) : cachedItems.length === 0 ? (
+                                    <p className="text-center text-xs text-white/30">
+                                      Aucun article trouvé.
+                                    </p>
+                                  ) : (
+                                    <div className="space-y-2">
+                                      {cachedItems.map((item) => (
+                                        <div
+                                          key={item.id}
+                                          className="flex items-center justify-between gap-2"
+                                        >
+                                          <div className="flex items-center gap-2">
+                                            <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-tc-gold/20 text-[10px] font-bold text-tc-gold">
+                                              {item.quantite}
+                                            </span>
+                                            <span className="text-xs text-tc-cream">
+                                              {item.nom}
+                                            </span>
+                                          </div>
+                                          <span className="shrink-0 text-xs text-white/40">
+                                            {formatAmount(item.sous_total)}
+                                          </span>
+                                        </div>
+                                      ))}
+                                      <div className="mt-2 flex justify-between border-t border-white/5 pt-2">
+                                        <span className="text-xs text-white/30">
+                                          Sous-total articles
+                                        </span>
+                                        <span className="text-xs font-medium text-tc-cream">
+                                          {formatAmount(
+                                            cachedItems.reduce((s, i) => s + i.sous_total, 0),
+                                          )}
+                                        </span>
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+
+                            {/* Advance status */}
+                            {nextStatus ? (
+                              <div className="border-t border-white/5 pt-3">
+                                <button
+                                  type="button"
+                                  disabled={updatingOrderId === o.id}
+                                  onClick={() => void advanceOrderStatus(o)}
+                                  className="w-full rounded-full bg-tc-gold/90 py-2.5 text-sm font-bold text-tc-black transition hover:bg-tc-gold disabled:opacity-50"
+                                >
+                                  → Passer à : {orderStatusLabel[nextStatus]}
+                                </button>
+                              </div>
                             ) : null}
-                          </div>
+
+                            {/* Assign livreur */}
+                            {o.statut !== 'livre' ? (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setAssignModal(o)
+                                  setAssignLivreurId('')
+                                  setAssignEta(25)
+                                  void supabase
+                                    .from('livreurs')
+                                    .select('*')
+                                    .eq('disponible', true)
+                                    .eq('actif', true)
+                                    .then(({ data }) =>
+                                      setAvailableLivreurs((data as LivreurRow[]) ?? []),
+                                    )
+                                }}
+                                className="mt-3 w-full rounded-full border border-tc-gold/30 py-2 text-xs text-tc-gold transition hover:bg-tc-gold/10"
+                              >
+                                🛵 Assigner un livreur
+                              </button>
+                            ) : null}
+                          </article>
                         )
                       })}
                     </div>
-
-                    {nextStatus ? (
-                      <div className="border-t border-white/5 pt-3">
-                        <button
-                          type="button"
-                          disabled={updatingOrderId === o.id}
-                          onClick={() => void advanceOrderStatus(o)}
-                          className="w-full rounded-full bg-tc-gold/90 py-2.5 text-sm font-bold text-tc-black transition hover:bg-tc-gold disabled:opacity-50"
-                        >
-                          → Passer à : {orderStatusLabel[nextStatus]}
-                        </button>
-                      </div>
-                    ) : null}
-
-                    {o.statut !== 'livre' ? (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setAssignModal(o)
-                          setAssignLivreurId('')
-                          setAssignEta(25)
-                          void supabase
-                            .from('livreurs')
-                            .select('*')
-                            .eq('disponible', true)
-                            .eq('actif', true)
-                            .then(({ data }) =>
-                              setAvailableLivreurs((data as LivreurRow[]) ?? []),
-                            )
-                        }}
-                        className="mt-3 w-full rounded-full border border-tc-gold/30 py-2 text-xs text-tc-gold transition hover:bg-tc-gold/10"
-                      >
-                        🛵 Assigner un livreur
-                      </button>
-                    ) : null}
-                  </article>
-                )
-              })}
+                  </div>
+                ))
+              })()}
             </div>
           )
         ) : tab === 'menu' ? (
           <>
             <div className="flex flex-wrap items-center justify-between gap-3">
               <h2 className="font-medium text-tc-cream">Gestion du Menu</h2>
-              <button
-                type="button"
-                onClick={openCreateMenuItem}
-                className="rounded-full border border-tc-gold/40 px-4 py-2 text-xs text-tc-gold transition hover:bg-tc-gold/10"
-              >
-                {menuTypeFilter === 'food' ? '+ Ajouter un plat' : '+ Ajouter une boisson'}
-              </button>
+              {menuSubTab === 'items' && (
+                <button
+                  type="button"
+                  onClick={openCreateMenuItem}
+                  className="rounded-full border border-tc-gold/40 px-4 py-2 text-xs text-tc-gold transition hover:bg-tc-gold/10"
+                >
+                  {menuTypeFilter === 'food' ? '+ Ajouter un plat' : '+ Ajouter une boisson'}
+                </button>
+              )}
             </div>
 
-            {/* Sous-onglets Plats / Boissons */}
+            {/* Toggle Articles / Catégories */}
             <div className="mt-4 flex gap-1 rounded-full bg-white/5 p-1 w-fit">
               <button
                 type="button"
-                onClick={() => {
-                  setMenuTypeFilter('food')
-                  setMenuCatFilter('all')
-                  setMenuSearch('')
-                }}
+                onClick={() => setMenuSubTab('items')}
                 className={cn(
                   'rounded-full px-5 py-1.5 text-xs font-bold uppercase tracking-wider transition-all duration-200',
-                  menuTypeFilter === 'food'
-                    ? 'bg-tc-gold text-tc-black'
-                    : 'text-tc-cream/50 hover:text-tc-cream',
+                  menuSubTab === 'items' ? 'bg-tc-gold text-tc-black' : 'text-tc-cream/50 hover:text-tc-cream',
                 )}
               >
-                🍽 Plats
+                📋 Articles
               </button>
               <button
                 type="button"
-                onClick={() => {
-                  setMenuTypeFilter('drink')
-                  setMenuCatFilter('all')
-                  setMenuSearch('')
-                }}
+                onClick={() => setMenuSubTab('categories')}
                 className={cn(
                   'rounded-full px-5 py-1.5 text-xs font-bold uppercase tracking-wider transition-all duration-200',
-                  menuTypeFilter === 'drink'
-                    ? 'bg-tc-gold text-tc-black'
-                    : 'text-tc-cream/50 hover:text-tc-cream',
+                  menuSubTab === 'categories' ? 'bg-tc-gold text-tc-black' : 'text-tc-cream/50 hover:text-tc-cream',
                 )}
               >
-                🍹 Boissons
+                🗂 Catégories
               </button>
             </div>
 
-            <div className="mt-4 mb-6 flex flex-wrap gap-3">
-              <input
-                type="search"
-                value={menuSearch}
-                onChange={(e) => setMenuSearch(e.target.value)}
-                placeholder="Rechercher..."
-                className={cn(FORM_INPUT_CLASS, 'max-w-xs flex-1')}
-              />
-              <select
-                value={menuCatFilter}
-                onChange={(e) => setMenuCatFilter(e.target.value)}
-                className={cn(FORM_INPUT_CLASS, 'max-w-[200px]')}
-              >
-                <option value="all" className="bg-[#111]">
-                  Toutes les catégories
-                </option>
-                {menuUniqueCategories.map((cat) => (
-                  <option key={cat} value={cat} className="bg-[#111]">
-                    {menuCategories.find((c) => c.id === cat)?.labelFr ?? cat}
-                  </option>
-                ))}
-              </select>
-            </div>
+            {menuSubTab === 'items' ? (
+              <>
+                {/* Sous-onglets Plats / Boissons */}
+                <div className="mt-4 flex gap-1 rounded-full bg-white/5 p-1 w-fit">
+                  <button
+                    type="button"
+                    onClick={() => { setMenuTypeFilter('food'); setMenuCatFilter('all'); setMenuSearch('') }}
+                    className={cn(
+                      'rounded-full px-5 py-1.5 text-xs font-bold uppercase tracking-wider transition-all duration-200',
+                      menuTypeFilter === 'food' ? 'bg-white/15 text-tc-cream' : 'text-tc-cream/50 hover:text-tc-cream',
+                    )}
+                  >
+                    🍽 Plats
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setMenuTypeFilter('drink'); setMenuCatFilter('all'); setMenuSearch('') }}
+                    className={cn(
+                      'rounded-full px-5 py-1.5 text-xs font-bold uppercase tracking-wider transition-all duration-200',
+                      menuTypeFilter === 'drink' ? 'bg-white/15 text-tc-cream' : 'text-tc-cream/50 hover:text-tc-cream',
+                    )}
+                  >
+                    🍹 Boissons
+                  </button>
+                </div>
 
-            {loadingMenu ? (
-              <p className="text-center text-sm text-white/30">Chargement…</p>
-            ) : adminMenuFiltered.length === 0 ? (
-              <p className="text-center text-sm text-white/30">Aucun plat trouvé.</p>
+                <div className="mt-4 mb-6 flex flex-wrap gap-3">
+                  <input
+                    type="search"
+                    value={menuSearch}
+                    onChange={(e) => setMenuSearch(e.target.value)}
+                    placeholder="Rechercher..."
+                    className={cn(FORM_INPUT_CLASS, 'max-w-xs flex-1')}
+                  />
+                  <select
+                    value={menuCatFilter}
+                    onChange={(e) => setMenuCatFilter(e.target.value)}
+                    className={cn(FORM_INPUT_CLASS, 'max-w-[200px]')}
+                  >
+                    <option value="all" className="bg-[#111]">Toutes les catégories</option>
+                    {menuUniqueCategories.map((cat) => (
+                      <option key={cat} value={cat} className="bg-[#111]">
+                        {activeCats.find((c) => c.id === cat)?.label_fr ?? cat}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {loadingMenu ? (
+                  <p className="text-center text-sm text-white/30">Chargement…</p>
+                ) : adminMenuFiltered.length === 0 ? (
+                  <p className="text-center text-sm text-white/30">Aucun article trouvé.</p>
+                ) : (
+                  <div className="grid grid-cols-1 gap-2">
+                    {adminMenuFiltered.map((item) => {
+                      const catLabel =
+                        activeCats.find((c) => c.id === item.category)?.label_fr ?? item.category
+                      return (
+                        <article
+                          key={item.id}
+                          className="flex items-center gap-3 rounded-xl border border-white/5 bg-white/[0.03] p-3"
+                        >
+                          {item.image ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img src={item.image} alt="" className="h-14 w-14 shrink-0 rounded-lg bg-white/5 object-cover" />
+                          ) : (
+                            <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-lg bg-white/5 text-[10px] text-white/25">—</div>
+                          )}
+                          <div className="min-w-0 flex-1">
+                            <p className="text-sm font-medium text-tc-cream">{item.name_fr}</p>
+                            <p className="text-[10px] uppercase tracking-wider text-white/30">{catLabel}</p>
+                            <p className="text-sm text-tc-gold">{formatAmount(item.price)}</p>
+                            {item.desc_fr ? (
+                              <p className="line-clamp-1 text-[10px] text-white/25">{item.desc_fr}</p>
+                            ) : null}
+                          </div>
+                          <div className="flex shrink-0 flex-col items-end gap-2">
+                            <div className="inline-flex flex-wrap items-center justify-end gap-2">
+                              <ToggleSwitch checked={item.is_visible} onChange={(v) => void toggleMenuItem(item.id, 'is_visible', v)} label="Visible" />
+                              <ToggleSwitch checked={item.is_popular} onChange={(v) => void toggleMenuItem(item.id, 'is_popular', v)} label="★" />
+                            </div>
+                            <div className="flex gap-2">
+                              <Tooltip text="Modifier" position="top">
+                                <button type="button" onClick={() => openEditMenuItem(item)} className="text-white/40 transition hover:text-tc-gold" aria-label="Modifier">✏️</button>
+                              </Tooltip>
+                              <Tooltip text="Supprimer" position="top">
+                                <button type="button" onClick={() => void deleteMenuItem(item.id)} className="text-white/40 transition hover:text-red-400" aria-label="Supprimer">🗑️</button>
+                              </Tooltip>
+                            </div>
+                          </div>
+                        </article>
+                      )
+                    })}
+                  </div>
+                )}
+              </>
             ) : (
-              <div className="grid grid-cols-1 gap-2">
-                {adminMenuFiltered.map((item) => {
-                  const catLabel =
-                    menuCategories.find((c) => c.id === item.category)?.labelFr ??
-                    item.category
-                  return (
-                    <article
-                      key={item.id}
-                      className="flex items-center gap-3 rounded-xl border border-white/5 bg-white/[0.03] p-3"
-                    >
-                      {item.image ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img
-                          src={item.image}
-                          alt=""
-                          className="h-14 w-14 shrink-0 rounded-lg bg-white/5 object-cover"
-                        />
-                      ) : (
-                        <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-lg bg-white/5 text-[10px] text-white/25">
-                          —
-                        </div>
-                      )}
-                      <div className="min-w-0 flex-1">
-                        <p className="text-sm font-medium text-tc-cream">{item.name_fr}</p>
-                        <p className="text-[10px] uppercase tracking-wider text-white/30">
-                          {catLabel}
-                        </p>
-                        <p className="text-sm text-tc-gold">{formatAmount(item.price)}</p>
-                        {item.desc_fr ? (
-                          <p className="line-clamp-1 text-[10px] text-white/25">
-                            {item.desc_fr}
-                          </p>
-                        ) : null}
-                      </div>
-                      <div className="flex shrink-0 flex-col items-end gap-2">
-                        <div className="inline-flex flex-wrap items-center justify-end gap-2">
-                          <ToggleSwitch
-                            checked={item.is_visible}
-                            onChange={(v) => void toggleMenuItem(item.id, 'is_visible', v)}
-                            label="Visible"
-                          />
-                          <ToggleSwitch
-                            checked={item.is_popular}
-                            onChange={(v) => void toggleMenuItem(item.id, 'is_popular', v)}
-                            label="★"
-                          />
-                        </div>
-                        <div className="flex gap-2">
-                          <Tooltip text="Modifier" position="top">
+              /* ── Vue Catégories ── */
+              <>
+                {loadingMenuCats ? (
+                  <p className="mt-6 text-center text-sm text-white/30">Chargement…</p>
+                ) : (
+                  <>
+                    {(['food', 'drink'] as const).map((type) => {
+                      const cats = activeCats.filter((c) => c.type === type).sort((a, b) => a.position - b.position)
+                      return (
+                        <div key={type} className="mt-6">
+                          <div className="mb-3 flex items-center justify-between">
+                            <h3 className="text-sm font-semibold uppercase tracking-widest text-white/40">
+                              {type === 'food' ? '🍽 Plats' : '🍹 Boissons'}
+                              <span className="ml-2 text-[10px] font-normal text-white/20">
+                                {cats.length} catégorie{cats.length > 1 ? 's' : ''}
+                              </span>
+                            </h3>
                             <button
                               type="button"
-                              onClick={() => openEditMenuItem(item)}
-                              className="text-white/40 transition hover:text-tc-gold"
-                              aria-label="Modifier"
+                              onClick={() => openCreateMenuCat(type)}
+                              className="rounded-full border border-tc-gold/30 px-3 py-1 text-[10px] text-tc-gold/70 transition hover:bg-tc-gold/10 hover:text-tc-gold"
                             >
-                              ✏️
+                              + Ajouter
                             </button>
-                          </Tooltip>
-                          <Tooltip text="Supprimer" position="top">
-                            <button
-                              type="button"
-                              onClick={() => void deleteMenuItem(item.id)}
-                              className="text-white/40 transition hover:text-red-400"
-                              aria-label="Supprimer"
-                            >
-                              🗑️
-                            </button>
-                          </Tooltip>
+                          </div>
+
+                          {cats.length === 0 ? (
+                            <p className="text-xs text-white/20">Aucune catégorie.</p>
+                          ) : (
+                            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                              {cats.map((cat) => {
+                                const itemCount = menuItems.filter((i) => i.category === cat.id).length
+                                return (
+                                  <div
+                                    key={cat.id}
+                                    className="flex items-center gap-3 rounded-xl border border-white/5 bg-white/[0.03] p-3"
+                                  >
+                                    {cat.icon ? (
+                                      <span className="text-xl">{cat.icon}</span>
+                                    ) : (
+                                      <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-white/5 text-[10px] text-white/20">
+                                        {type === 'food' ? '🍽' : '🍹'}
+                                      </div>
+                                    )}
+                                    <div className="min-w-0 flex-1">
+                                      <p className="text-sm font-medium text-tc-cream">{cat.label_fr}</p>
+                                      {cat.label_en ? (
+                                        <p className="text-[10px] text-white/30">{cat.label_en}</p>
+                                      ) : null}
+                                      <p className="text-[10px] text-white/20">
+                                        {itemCount} article{itemCount > 1 ? 's' : ''} · id: {cat.id}
+                                      </p>
+                                    </div>
+                                    <div className="flex shrink-0 gap-2">
+                                      <Tooltip text="Modifier" position="top">
+                                        <button
+                                          type="button"
+                                          onClick={() => openEditMenuCat(cat)}
+                                          className="text-white/40 transition hover:text-tc-gold"
+                                          aria-label="Modifier"
+                                        >
+                                          ✏️
+                                        </button>
+                                      </Tooltip>
+                                      <Tooltip text="Supprimer" position="top">
+                                        <button
+                                          type="button"
+                                          onClick={() => void deleteMenuCategory(cat.id)}
+                                          className="text-white/40 transition hover:text-red-400"
+                                          aria-label="Supprimer"
+                                        >
+                                          🗑️
+                                        </button>
+                                      </Tooltip>
+                                    </div>
+                                  </div>
+                                )
+                              })}
+                            </div>
+                          )}
                         </div>
-                      </div>
-                    </article>
-                  )
-                })}
-              </div>
+                      )
+                    })}
+                  </>
+                )}
+              </>
             )}
           </>
         ) : tab === 'games' ? (
@@ -3046,6 +3453,107 @@ export default function AdminDashboardPage() {
         </div>
       )}
 
+      {/* Modal Catégorie */}
+      {menuCatModal && (
+        <div
+          className="fixed inset-0 z-[200] flex items-center justify-center bg-black/85 p-4"
+          onClick={closeMenuCatModal}
+        >
+          <div
+            className="w-full max-w-md rounded-2xl border border-white/10 bg-[#111] p-6"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="mb-5 font-medium text-tc-cream">
+              {menuCatModal === 'create' ? 'Créer une catégorie' : 'Modifier la catégorie'}
+            </h3>
+
+            <div className="space-y-4">
+              <div>
+                <label className="text-xs text-white/40">Nom FR *</label>
+                <input
+                  type="text"
+                  value={menuCatForm.label_fr ?? ''}
+                  onChange={(e) => setMenuCatForm((p) => ({ ...p, label_fr: e.target.value }))}
+                  placeholder="ex: Plats Locaux"
+                  className={cn(FORM_INPUT_CLASS, 'mt-1')}
+                />
+              </div>
+              <div>
+                <label className="text-xs text-white/40">Nom EN</label>
+                <input
+                  type="text"
+                  value={menuCatForm.label_en ?? ''}
+                  onChange={(e) => setMenuCatForm((p) => ({ ...p, label_en: e.target.value }))}
+                  placeholder="ex: Local Dishes"
+                  className={cn(FORM_INPUT_CLASS, 'mt-1')}
+                />
+              </div>
+              <div>
+                <label className="text-xs text-white/40">Icône (emoji)</label>
+                <input
+                  type="text"
+                  value={menuCatForm.icon ?? ''}
+                  onChange={(e) => setMenuCatForm((p) => ({ ...p, icon: e.target.value }))}
+                  placeholder="ex: 🍲"
+                  className={cn(FORM_INPUT_CLASS, 'mt-1')}
+                />
+              </div>
+              <div>
+                <label className="text-xs text-white/40">Type *</label>
+                <select
+                  value={menuCatForm.type ?? 'food'}
+                  onChange={(e) => setMenuCatForm((p) => ({ ...p, type: e.target.value as 'food' | 'drink' }))}
+                  className={cn(FORM_INPUT_CLASS, 'mt-1')}
+                  disabled={menuCatModal === 'edit'}
+                >
+                  <option value="food" className="bg-[#111]">🍽 Plats</option>
+                  <option value="drink" className="bg-[#111]">🍹 Boissons</option>
+                </select>
+              </div>
+              <div>
+                <label className="text-xs text-white/40">Position (ordre d&apos;affichage)</label>
+                <input
+                  type="number"
+                  min={0}
+                  value={menuCatForm.position ?? 0}
+                  onChange={(e) => setMenuCatForm((p) => ({ ...p, position: Number(e.target.value) }))}
+                  className={cn(FORM_INPUT_CLASS, 'mt-1')}
+                />
+              </div>
+              {menuCatModal === 'create' && (
+                <p className="text-[10px] text-white/25">
+                  L&apos;identifiant (id) sera généré automatiquement depuis le nom FR.
+                </p>
+              )}
+              {menuCatModal === 'edit' && editingMenuCat && (
+                <p className="text-[10px] text-white/25">
+                  id: <span className="font-mono">{editingMenuCat.id}</span>
+                </p>
+              )}
+            </div>
+
+            <div className="mt-6 flex gap-2">
+              <button
+                type="button"
+                disabled={savingMenuCat}
+                onClick={closeMenuCatModal}
+                className="flex-1 rounded-full border border-white/15 px-4 py-2 text-xs text-white/50 transition hover:text-tc-cream disabled:opacity-50"
+              >
+                Annuler
+              </button>
+              <button
+                type="button"
+                disabled={savingMenuCat || !menuCatForm.label_fr?.trim()}
+                onClick={() => void saveMenuCategory()}
+                className="flex-1 rounded-full bg-tc-gold px-4 py-2 text-xs font-bold uppercase tracking-wider text-tc-black transition hover:bg-tc-gold/90 disabled:opacity-50"
+              >
+                {savingMenuCat ? 'Enregistrement…' : 'Enregistrer'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {menuModal && (
         <div
           className="fixed inset-0 z-[200] flex items-center justify-center bg-black/85 p-4"
@@ -3117,9 +3625,9 @@ export default function AdminDashboardPage() {
                   }
                   className={cn(FORM_INPUT_CLASS, 'mt-1')}
                 >
-                  {menuCategories.map((cat) => (
+                  {activeCats.map((cat) => (
                     <option key={cat.id} value={cat.id} className="bg-[#111]">
-                      {cat.labelFr}
+                      {cat.label_fr}
                     </option>
                   ))}
                 </select>
