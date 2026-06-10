@@ -70,8 +70,6 @@ export default function Cart({ locale }: { locale: string }) {
       ? (isFr ? 'Dès que possible' : 'ASAP')
       : delivery.heureChoisie
 
-    const dashboardLink = `https://canteens-app.vercel.app/fr/admin`
-
     const msg = isFr
       ? `🛵 *COMMANDE LIVRAISON — THE CANTEEN'S*\n\n` +
         `📋 *N° Commande :* ${orderNumber}\n\n` +
@@ -87,8 +85,7 @@ export default function Cart({ locale }: { locale: string }) {
         `${delivery.etage ? `🏢 *Étage/Appt :* ${delivery.etage}\n` : ''}` +
         `💳 *Paiement :* ${paiementLabel[delivery.paiement]?.fr}\n` +
         `⏰ *Livraison :* ${horaire}\n` +
-        `${delivery.instructions ? `💬 *Instructions :* ${delivery.instructions}\n` : ''}` +
-        `\n🔗 *Assigner un livreur :*\n${dashboardLink}`
+        `${delivery.instructions ? `💬 *Instructions :* ${delivery.instructions}\n` : ''}`
       : `🛵 *DELIVERY ORDER — THE CANTEEN'S*\n\n` +
         `📋 *Order N° :* ${orderNumber}\n\n` +
         `🍽️ *Order :*\n${lignes}\n\n` +
@@ -103,8 +100,7 @@ export default function Cart({ locale }: { locale: string }) {
         `${delivery.etage ? `🏢 *Floor/Apt :* ${delivery.etage}\n` : ''}` +
         `💳 *Payment :* ${paiementLabel[delivery.paiement]?.en}\n` +
         `⏰ *Delivery :* ${horaire}\n` +
-        `${delivery.instructions ? `💬 *Instructions :* ${delivery.instructions}\n` : ''}` +
-        `\n🔗 *Assign driver :*\n${dashboardLink}`
+        `${delivery.instructions ? `💬 *Instructions :* ${delivery.instructions}\n` : ''}`
 
     return msg
   }
@@ -156,6 +152,12 @@ export default function Cart({ locale }: { locale: string }) {
       if (itemsError) {
         console.error('Supabase order_items insert error:', itemsError)
       }
+
+      void fetch('/api/orders/staff-notify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ orderId: order.id }),
+      }).catch((err) => console.error('staff-notify error:', err))
     }
 
     openWhatsApp(buildMessage())

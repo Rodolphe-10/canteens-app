@@ -2,7 +2,14 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import Image from 'next/image'
+import { useParams } from 'next/navigation'
 import { ArrowRight, Lock } from 'lucide-react'
+import {
+  buildStaffAssignUrl,
+  consumePendingAssignToken,
+  peekPendingAssignToken,
+  storePendingAssignToken,
+} from '@/lib/admin-links'
 import { mediaUrls } from '@/lib/media'
 import { menuCategories } from '@/data/menu'
 import Tooltip from '@/components/ui/Tooltip'
@@ -144,6 +151,7 @@ type OrderRow = {
   total: number
   statut: OrderStatus
   created_at: string
+  assign_token?: string
   order_items?: OrderItem[]
 }
 
@@ -549,6 +557,8 @@ function OrderStatusProgress({ current }: { current: OrderStatus }) {
 }
 
 export default function AdminDashboardPage() {
+  const params = useParams<{ locale: string }>()
+  const locale = params.locale ?? 'fr'
   const [role, setRole] = useState<Role | null>(null)
   const [staffNom, setStaffNom] = useState('')
   const [staffList, setStaffList] = useState<{ id: string; nom: string }[]>([])
@@ -565,6 +575,7 @@ export default function AdminDashboardPage() {
   const [orders, setOrders] = useState<OrderRow[]>([])
   const [updatingReservationId, setUpdatingReservationId] = useState<string | null>(null)
   const [updatingOrderId, setUpdatingOrderId] = useState<string | null>(null)
+  const [highlightedOrderId, setHighlightedOrderId] = useState<string | null>(null)
   const [events, setEvents] = useState<EventRow[]>([])
   const [loadingEvents, setLoadingEvents] = useState(true)
   const [eventModal, setEventModal] = useState<'create' | 'edit' | null>(null)
@@ -711,13 +722,21 @@ export default function AdminDashboardPage() {
   }, [supabase])
 
   useEffect(() => {
+    const token = new URLSearchParams(window.location.search).get('assign')
+    if (token) {
+      storePendingAssignToken(token)
+      window.history.replaceState({}, '', window.location.pathname)
+    }
+  }, [])
+
+  useEffect(() => {
     const stored = sessionStorage.getItem(ACCESS_KEY)
     const storedNom = sessionStorage.getItem('tc_staff_nom')
     if (storedNom) setStaffNom(storedNom)
     if (isRole(stored)) {
       setRole(stored)
       setIsAuthed(true)
-      setTab(getInitialTab(stored))
+      setTab(peekPendingAssignToken() ? 'orders' : getInitialTab(stored))
     }
   }, [])
 
@@ -1254,6 +1273,50 @@ export default function AdminDashboardPage() {
     )
   }
 
+  const openAssignForOrder = useCallback(
+    async (order: OrderRow, options?: { highlight?: boolean }) => {
+      setAssignModal(order)
+      setAssignLivreurId('')
+      setAssignEta(25)
+      if (options?.highlight !== false) {
+        setHighlightedOrderId(order.id)
+      }
+      const { data } = await supabase
+        .from('livreurs')
+        .select('*')
+        .eq('disponible', true)
+        .eq('actif', true)
+      setAvailableLivreurs((data as LivreurRow[]) ?? [])
+      window.setTimeout(() => {
+        document
+          .getElementById(`order-${order.id}`)
+          ?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      }, 150)
+    },
+    [supabase],
+  )
+
+  useEffect(() => {
+    if (!isAuthed || loadingOrders) return
+    if (role !== 'admin' && role !== 'chef') return
+
+    const token = peekPendingAssignToken()
+    if (!token) return
+
+    const order = orders.find((o) => o.assign_token === token)
+    if (!order) return
+
+    consumePendingAssignToken()
+    setTab('orders')
+    void openAssignForOrder(order)
+  }, [isAuthed, loadingOrders, orders, role, openAssignForOrder])
+
+  useEffect(() => {
+    if (!highlightedOrderId) return
+    const timeout = window.setTimeout(() => setHighlightedOrderId(null), 8000)
+    return () => window.clearTimeout(timeout)
+  }, [highlightedOrderId])
+
   const assignDelivery = async () => {
     if (!assignModal || !assignLivreurId) return
     setAssigningDelivery(true)
@@ -1698,7 +1761,7 @@ export default function AdminDashboardPage() {
       setRole(matchedRole)
       setStaffNom(data.nom)
       setIsAuthed(true)
-      setTab(getInitialTab(matchedRole))
+      setTab(peekPendingAssignToken() ? 'orders' : getInitialTab(matchedRole))
       setPin('')
       setPinError(false)
       return
@@ -2343,9 +2406,12 @@ export default function AdminDashboardPage() {
                         return (
                           <article
                             key={o.id}
+                            id={`order-${o.id}`}
                             className={cn(
                               'rounded-2xl border p-5 transition-all',
                               statusColors[o.statut],
+                              highlightedOrderId === o.id &&
+                                'ring-2 ring-tc-gold/60 ring-offset-2 ring-offset-[#0A0A0A]',
                             )}
                           >
                             {/* Header : numéro + client + prix */}
@@ -2524,25 +2590,31 @@ export default function AdminDashboardPage() {
 
                             {/* Assign livreur */}
                             {o.statut !== 'livre' ? (
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setAssignModal(o)
-                                  setAssignLivreurId('')
-                                  setAssignEta(25)
-                                  void supabase
-                                    .from('livreurs')
-                                    .select('*')
-                                    .eq('disponible', true)
-                                    .eq('actif', true)
-                                    .then(({ data }) =>
-                                      setAvailableLivreurs((data as LivreurRow[]) ?? []),
-                                    )
-                                }}
-                                className="mt-3 w-full rounded-full border border-tc-gold/30 py-2 text-xs text-tc-gold transition hover:bg-tc-gold/10"
-                              >
-                                🛵 Assigner un livreur
-                              </button>
+                              <div className="mt-3 flex flex-col gap-2">
+                                <button
+                                  type="button"
+                                  onClick={() => void openAssignForOrder(o)}
+                                  className="w-full rounded-full border border-tc-gold/30 py-2 text-xs text-tc-gold transition hover:bg-tc-gold/10"
+                                >
+                                  🛵 Assigner un livreur
+                                </button>
+                                {o.assign_token ? (
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      const link = buildStaffAssignUrl(
+                                        window.location.origin,
+                                        locale,
+                                        o.assign_token!,
+                                      )
+                                      void navigator.clipboard.writeText(link)
+                                    }}
+                                    className="w-full rounded-full border border-white/10 py-2 text-[10px] text-white/35 transition hover:border-white/20 hover:text-white/55"
+                                  >
+                                    📋 Copier le lien staff (assignation)
+                                  </button>
+                                ) : null}
+                              </div>
                             ) : null}
                           </article>
                         )
