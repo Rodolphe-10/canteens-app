@@ -31,6 +31,7 @@ export default function InfiniteGalleryStrip({
   const touchStartX = useRef<number | null>(null)
   const touchStartY = useRef<number | null>(null)
   const touchStartLeft = useRef(0)
+  const isHorizontalSwipe = useRef(false)
   const slidesLengthRef = useRef(0)
 
   // Reset errors quand images change pour éviter les flashs noirs
@@ -86,7 +87,6 @@ export default function InfiniteGalleryStrip({
     touchStartX.current = e.touches[0].clientX
     touchStartY.current = e.touches[0].clientY
     touchStartLeft.current = scrollRef.current?.scrollLeft ?? 0
-    setPaused(true)
   }, [])
 
   // NOTE: onTouchMove is intentionally NOT handled via React synthetic events
@@ -96,6 +96,7 @@ export default function InfiniteGalleryStrip({
   const handleTouchEnd = useCallback(() => {
     touchStartX.current = null
     touchStartY.current = null
+    isHorizontalSwipe.current = false
     if (!isHovering.current) {
       window.setTimeout(() => setPaused(false), 3000)
     }
@@ -110,7 +111,11 @@ export default function InfiniteGalleryStrip({
       const dx = Math.abs(touchStartX.current - e.touches[0].clientX)
       const dy = Math.abs((touchStartY.current ?? 0) - e.touches[0].clientY)
       // Only hijack horizontal swipes
-      if (dx > dy) {
+      if (dx > dy && dx > 8) {
+        if (!isHorizontalSwipe.current) {
+          isHorizontalSwipe.current = true
+          setPaused(true)
+        }
         e.preventDefault()
         el.scrollLeft = touchStartLeft.current + (touchStartX.current - e.touches[0].clientX)
       }
@@ -136,6 +141,10 @@ export default function InfiniteGalleryStrip({
     let raf = 0
     const step = () => {
       if (slidesLengthRef.current === 0) {
+        raf = requestAnimationFrame(step)
+        return
+      }
+      if (el.scrollWidth <= el.clientWidth) {
         raf = requestAnimationFrame(step)
         return
       }
@@ -192,10 +201,11 @@ export default function InfiniteGalleryStrip({
 
       <div
         ref={scrollRef}
-        className="overflow-hidden px-10 scrollbar-hide"
-        style={{ scrollbarWidth: 'none' }}
+        className="overflow-x-auto overflow-y-hidden px-10 scrollbar-hide"
+        style={{ scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' }}
         onTouchStart={handleTouchStart}
         onTouchEnd={handleTouchEnd}
+        onTouchCancel={handleTouchEnd}
       >
         <div className="flex w-max gap-4">
           {slides.map((src, i) => {
