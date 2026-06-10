@@ -1,9 +1,10 @@
 'use client'
 
-import { useRef, useState, type RefObject } from 'react'
+import { useMemo, useRef, useState, type RefObject } from 'react'
 import { motion } from 'framer-motion'
 import { Send, ChevronDown, CheckCircle, AlertCircle } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { sortAlphaBy, sortAlphaStrings } from '@/lib/sort'
 import { createClient } from '@/lib/supabase/client'
 
 const buffetOptions = [
@@ -55,23 +56,31 @@ const buffetOptions = [
 ]
 
 const eventTypes = {
-  fr: ['Dîner classique', 'Anniversaire', 'Dîner romantique', 'Réunion corporate', 'Soirée privée', 'Brunch', 'Autre'],
-  en: ['Classic dinner', 'Birthday', 'Romantic dinner', 'Corporate meeting', 'Private party', 'Brunch', 'Other'],
+  fr: sortAlphaStrings([
+    'Dîner classique', 'Anniversaire', 'Dîner romantique', 'Réunion corporate', 'Soirée privée', 'Brunch', 'Autre',
+  ]),
+  en: sortAlphaStrings([
+    'Classic dinner', 'Birthday', 'Romantic dinner', 'Corporate meeting', 'Private party', 'Brunch', 'Other',
+  ], 'en'),
 }
 
 const spaces = {
-  fr: ['Restaurant', 'Lounge', 'Terrasse', 'Plusieurs espaces'],
-  en: ['Restaurant', 'Lounge', 'Terrace', 'Multiple spaces'],
+  fr: sortAlphaStrings(['Restaurant', 'Lounge', 'Terrasse', 'Plusieurs espaces']),
+  en: sortAlphaStrings(['Restaurant', 'Lounge', 'Terrace', 'Multiple spaces'], 'en'),
 }
 
 const animations = {
-  fr: ['Sans animation', 'DJ', 'Karaoké', 'Live Music', 'À discuter'],
-  en: ['No entertainment', 'DJ', 'Karaoke', 'Live Music', 'To be discussed'],
+  fr: sortAlphaStrings(['Sans animation', 'DJ', 'Karaoké', 'Live Music', 'À discuter']),
+  en: sortAlphaStrings(['No entertainment', 'DJ', 'Karaoke', 'Live Music', 'To be discussed'], 'en'),
 }
 
 const budgets = {
-  fr: ['< 50 000 FCFA', '50 000 – 150 000 FCFA', '150 000 – 300 000 FCFA', '> 300 000 FCFA', 'Préfère ne pas indiquer'],
-  en: ['< 50,000 FCFA', '50,000 – 150,000 FCFA', '150,000 – 300,000 FCFA', '> 300,000 FCFA', 'Prefer not to say'],
+  fr: sortAlphaStrings([
+    '< 50 000 FCFA', '50 000 – 150 000 FCFA', '150 000 – 300 000 FCFA', '> 300 000 FCFA', 'Préfère ne pas indiquer',
+  ]),
+  en: sortAlphaStrings([
+    '< 50,000 FCFA', '50,000 – 150,000 FCFA', '150,000 – 300,000 FCFA', '> 300,000 FCFA', 'Prefer not to say',
+  ], 'en'),
 }
 
 interface FormData {
@@ -208,6 +217,10 @@ export default function ReservationForm({
 }) {
   const isFr = locale === 'fr'
   const errorMessages = isFr ? errorMessagesFr : errorMessagesEn
+  const sortedBuffetOptions = useMemo(
+    () => sortAlphaBy(buffetOptions, (o) => (isFr ? o.labelFr : o.labelEn)),
+    [isFr],
+  )
   const prefilledEspace = resolveEspaceFromSlug(defaultEspace, locale)
   const [form, setForm] = useState<FormData>(() => ({
     ...initial,
@@ -568,7 +581,7 @@ export default function ReservationForm({
                   {errorMessages.buffetFormule}
                 </p>
               )}
-              {buffetOptions.map(option => (
+              {sortedBuffetOptions.map(option => (
                 <button
                   key={option.id}
                   type="button"

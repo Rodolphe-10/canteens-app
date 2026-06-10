@@ -1,0 +1,13 @@
+/**
+ * Placeholder blur sombre pour les images dynamiques (Supabase storage).
+ * Utilisé avec Next.js Image : placeholder="blur" blurDataURL={DARK_BLUR}
+ * Évite le "pop" visuel pendant le chargement des images.
+ */
+export const DARK_BLUR =
+  'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAgGBgcGBQgHBwcJCQgKDBQNDAsLDBkSEw8UHRofHh0aHBwgJC4nICIsIxwcKDcpLDAxNDQ0Hyc5PTgyPC4zNDL/wAALCAAIAAgBAREA/8QAHwAAAQUBAQEBAQEAAAAAAAAAAAECAwQFBgcICQoL/8QAtRAAAgEDAwIEAwUFBAQAAAF9AQIDAAQRBRIhMUEGE1FhByJxFDKBkaEII0KxwRVS0fAkM2JyggkKFhcYGRolJicoKSo0NTY3ODk6Q0RFRkdISUpTVFVWV1hZWmNkZWZnaGlqc3R1dnd4eXqDhIWGh4iJipKTlJWWl5iZmqKjpKWmp6ipqrKztLW2t7i5usLDxMXGx8jJytLT1NXW19jZ2uHi4+Tl5ufo6erx8vP09fb3+Pn6/9oACAEBAAA/AEW2trWygjtbWCOCCIYSOJAqqPQAcCpaKKAP/9k='
+
+/**
+ * Blur légèrement doré pour les images de plats/menu.
+ * Même valeur pour l'instant — à affiner si besoin.
+ */
+export const GOLD_BLUR = DARK_BLUR

@@ -1,9 +1,10 @@
 'use client'
 
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { menuCategories, type MenuCategory, type MenuItem } from '@/data/menu'
 import { createClient } from '@/lib/supabase/client'
+import { sortAlphaBy } from '@/lib/sort'
 import MenuCard from './MenuCard'
 
 type DbMenuItem = {
@@ -18,13 +19,19 @@ type DbMenuItem = {
   is_popular: boolean
 }
 
-function getDefaultFoodCategory(items: MenuItem[]) {
-  const withPhoto = menuCategories.find(
-    (cat) =>
-      cat.type === 'food' &&
-      items.some((item) => item.category === cat.id && item.image),
+function getDefaultFoodCategory(items: MenuItem[], type: 'food' | 'drink' = 'food') {
+  const cats = sortAlphaBy(
+    menuCategories.filter(
+      (cat) =>
+        cat.type === type &&
+        items.some((item) => item.category === cat.id),
+    ),
+    (cat) => cat.labelFr,
   )
-  return withPhoto?.id ?? 'entrees'
+  const withPhoto = cats.find((cat) =>
+    items.some((item) => item.category === cat.id && item.image),
+  )
+  return (withPhoto ?? cats[0])?.id ?? 'entrees'
 }
 
 export default function MenuSection({ locale }: { locale: string }) {
@@ -41,6 +48,7 @@ export default function MenuSection({ locale }: { locale: string }) {
       .from('menu_items')
       .select('*')
       .eq('is_visible', true)
+      .order('name_fr')
     if (!data) {
       setLoadingMenu(false)
       return
@@ -89,16 +97,38 @@ export default function MenuSection({ locale }: { locale: string }) {
     )
   }, [loadingMenu, menuItems])
 
-  const filteredCategories = menuCategories.filter(
-    (c) => c.type === activeType && menuItems.some((item) => item.category === c.id),
+  const localeKey = locale === 'fr' ? 'fr' : 'en'
+
+  const filteredCategories = useMemo(
+    () =>
+      sortAlphaBy(
+        menuCategories.filter(
+          (c) => c.type === activeType && menuItems.some((item) => item.category === c.id),
+        ),
+        (c) => (locale === 'fr' ? c.labelFr : c.labelEn),
+        localeKey,
+      ),
+    [activeType, menuItems, locale, localeKey],
   )
-  const filteredItems = menuItems.filter((item) => item.category === activeCategory)
+
+  const filteredItems = useMemo(
+    () =>
+      sortAlphaBy(
+        menuItems.filter((item) => item.category === activeCategory),
+        (item) => (locale === 'fr' ? item.nameFr : (item.nameEn ?? item.nameFr)),
+        localeKey,
+      ),
+    [menuItems, activeCategory, locale, localeKey],
+  )
 
   const handleTypeChange = (type: 'food' | 'drink') => {
     setActiveType(type)
-    const firstCat = menuCategories.find(
-      (c) => c.type === type && menuItems.some((item) => item.category === c.id),
-    )
+    const firstCat = sortAlphaBy(
+      menuCategories.filter(
+        (c) => c.type === type && menuItems.some((item) => item.category === c.id),
+      ),
+      (c) => c.labelFr,
+    )[0]
     if (firstCat) setActiveCategory(firstCat.id)
   }
 

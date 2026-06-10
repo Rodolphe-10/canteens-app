@@ -6,6 +6,7 @@ import { ChevronLeft, ChevronRight, X, ZoomIn } from 'lucide-react'
 import { AnimatePresence, motion } from 'framer-motion'
 import Tooltip from '@/components/ui/Tooltip'
 import { cn } from '@/lib/utils'
+import { DARK_BLUR } from '@/lib/blur-placeholder'
 
 export interface InfiniteGalleryStripProps {
   images: string[]
@@ -275,6 +276,8 @@ export default function InfiniteGalleryStrip({
                     alt={`${altPrefix} ${realIndex + 1}`}
                     fill
                     sizes="288px"
+                    placeholder="blur"
+                    blurDataURL={DARK_BLUR}
                     className="pointer-events-none object-cover opacity-80 transition-all duration-500 group-hover:scale-105 group-hover:opacity-100"
                     onError={() => setErrors((e) => ({ ...e, [stableKey]: true }))}
                     draggable={false}

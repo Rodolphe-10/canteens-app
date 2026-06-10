@@ -1,7 +1,10 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
+import Image from 'next/image'
 import { Lock } from 'lucide-react'
+import { mediaUrls } from '@/lib/media'
+import { sortAlphaBy } from '@/lib/sort'
 import { cn } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
 
@@ -20,6 +23,16 @@ const MASTER_KEYPAD = [
   ['4', '5', '6'],
   ['7', '8', '9'],
 ] as const
+
+const ROLE_OPTIONS = sortAlphaBy(
+  [
+    { value: 'admin', label: 'Administrateur' },
+    { value: 'chef', label: 'Chef de Salle' },
+    { value: 'cm', label: 'Community Manager' },
+    { value: 'livreur', label: 'Chef Livreur' },
+  ],
+  (r) => r.label,
+)
 
 const ROLE_STYLES: Record<string, { label: string; color: string; avatar: string }> = {
   admin: {
@@ -101,7 +114,7 @@ export default function StaffAdminPage() {
   const fetchProfiles = useCallback(async () => {
     setLoading(true)
     const supabase = createClient()
-    const { data } = await supabase.from('staff_profiles').select('*').order('created_at')
+    const { data } = await supabase.from('staff_profiles').select('*').order('nom')
     setProfiles((data as StaffProfile[]) ?? [])
     setLoading(false)
   }, [])
@@ -210,13 +223,19 @@ export default function StaffAdminPage() {
   if (!authed) {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center bg-[#0A0A0A] px-4">
-        <p className="text-xs uppercase tracking-[0.4em] text-white/30">
-          THE CANTEEN&apos;S
+        <Image
+          src={mediaUrls.logos.restaurant1}
+          alt="The Canteen's"
+          width={192}
+          height={64}
+          className="mb-2 h-16 w-48 object-contain brightness-0 invert"
+          priority
+        />
+        <div className="mx-auto mb-6 h-px w-12 bg-tc-gold/40" />
+        <p className="text-[10px] uppercase tracking-[0.5em] text-white/25">
+          Gestion du Staff
         </p>
-        <p className="mt-1 text-[10px] uppercase tracking-[0.6em] text-tc-gold/50">
-          GESTION DU STAFF
-        </p>
-        <p className="mt-2 text-[10px] tracking-widest text-white/20">
+        <p className="mt-3 text-[10px] tracking-widest text-white/20">
           Accès restreint — Code administrateur
         </p>
 
@@ -264,9 +283,20 @@ export default function StaffAdminPage() {
   return (
     <div className="min-h-screen bg-[#0A0A0A] text-tc-cream">
       <header className="sticky top-0 z-30 flex h-14 items-center justify-between border-b border-white/[0.07] bg-[#0A0A0A] px-4">
-        <p className="text-xs tracking-widest text-white/50">
-          THE CANTEEN&apos;S · Gestion du Staff
-        </p>
+        <div className="flex min-w-0 items-center gap-3">
+          <Image
+            src={mediaUrls.logos.restaurant1}
+            alt="The Canteen's"
+            width={120}
+            height={36}
+            className="h-9 w-auto max-w-[140px] shrink-0 object-contain brightness-0 invert"
+            priority
+          />
+          <div className="hidden h-4 w-px shrink-0 bg-white/10 sm:block" />
+          <p className="truncate text-[10px] uppercase tracking-[0.35em] text-white/35">
+            Gestion du Staff
+          </p>
+        </div>
         <button
           type="button"
           onClick={handleLogout}
@@ -398,10 +428,11 @@ export default function StaffAdminPage() {
                   onChange={(e) => setForm((prev) => ({ ...prev, role: e.target.value }))}
                   className={FORM_SELECT_CLASS}
                 >
-                  <option value="chef">Chef de Salle</option>
-                  <option value="admin">Administrateur</option>
-                  <option value="cm">Community Manager</option>
-                  <option value="livreur">Chef Livreur</option>
+                  {ROLE_OPTIONS.map((r) => (
+                    <option key={r.value} value={r.value}>
+                      {r.label}
+                    </option>
+                  ))}
                 </select>
               </div>
 

@@ -5,6 +5,7 @@ import Image from 'next/image'
 import { AnimatePresence, motion } from 'framer-motion'
 import { Plus, Star, X } from 'lucide-react'
 import { useCartStore } from '@/stores/cart.store'
+import { DARK_BLUR } from '@/lib/blur-placeholder'
 import {
   MENU_CARD_IMAGE_HEIGHT,
   MENU_CARD_IMAGE_WIDTH,
@@ -77,7 +78,9 @@ export default function MenuCard({
                     src={item.image!}
                     alt={name}
                     fill
-                    className="object-cover object-center"
+                    placeholder="blur"
+                    blurDataURL={DARK_BLUR}
+                    className="object-cover object-center transition-opacity duration-500"
                     sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
                     onError={() => setImgError(true)}
                   />

@@ -6,6 +6,7 @@ import { ArrowRight, Lock } from 'lucide-react'
 import { mediaUrls } from '@/lib/media'
 import { menuCategories } from '@/data/menu'
 import Tooltip from '@/components/ui/Tooltip'
+import { sortAlpha, sortAlphaBy } from '@/lib/sort'
 import { cn } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
 
@@ -143,6 +144,7 @@ type OrderRow = {
   total: number
   statut: OrderStatus
   created_at: string
+  order_items?: OrderItem[]
 }
 
 type OrderItem = {
@@ -323,15 +325,17 @@ const EVENT_TYPE_STYLES: Record<EventType, { pill: string; label: string }> = {
   },
 }
 
-const EVENT_TYPE_OPTIONS: EventType[] = [
-  'showcase',
-  'anniversaire',
-  'brunch',
-  'sport',
-  'special',
-  'live',
-  'autres',
-]
+const EVENT_TYPE_OPTIONS: EventType[] = (
+  [
+    'showcase',
+    'anniversaire',
+    'brunch',
+    'sport',
+    'special',
+    'live',
+    'autres',
+  ] as EventType[]
+).sort((a, b) => sortAlpha(EVENT_TYPE_STYLES[a].label, EVENT_TYPE_STYLES[b].label))
 
 const PREDEFINED_EVENT_TYPES = new Set<EventType>(
   EVENT_TYPE_OPTIONS.filter((t) => t !== 'autres'),
@@ -391,6 +395,12 @@ const orderStatusFlow: OrderStatus[] = [
   'en_livraison',
   'livre',
 ]
+
+const PAYMENT_LABELS: Record<string, string> = {
+  especes: 'Espèces à la livraison',
+  om: 'Orange Money',
+  momo: 'MTN MoMo',
+}
 
 const orderStatusLabel: Record<OrderStatus, string> = {
   en_attente: 'En attente',
@@ -555,8 +565,6 @@ export default function AdminDashboardPage() {
   const [orders, setOrders] = useState<OrderRow[]>([])
   const [updatingReservationId, setUpdatingReservationId] = useState<string | null>(null)
   const [updatingOrderId, setUpdatingOrderId] = useState<string | null>(null)
-  const [expandedOrderId, setExpandedOrderId] = useState<string | null>(null)
-  const [orderItemsCache, setOrderItemsCache] = useState<Record<string, OrderItem[]>>({})
   const [events, setEvents] = useState<EventRow[]>([])
   const [loadingEvents, setLoadingEvents] = useState(true)
   const [eventModal, setEventModal] = useState<'create' | 'edit' | null>(null)
@@ -655,13 +663,22 @@ export default function AdminDashboardPage() {
         position: i,
       }))
 
+  const sortedActiveCats = useMemo(
+    () => sortAlphaBy(activeCats, (c) => c.label_fr),
+    [activeCats],
+  )
+
   const menuUniqueCategories = useMemo(() => {
     const typeCats = new Set<string>(
       activeCats.filter((c) => c.type === menuTypeFilter).map((c) => c.id),
     )
     return [...new Set(menuItems.map((i) => i.category))]
       .filter((cat) => typeCats.has(cat))
-      .sort()
+      .sort((a, b) => {
+        const la = activeCats.find((c) => c.id === a)?.label_fr ?? a
+        const lb = activeCats.find((c) => c.id === b)?.label_fr ?? b
+        return sortAlpha(la, lb)
+      })
   }, [menuItems, menuTypeFilter, activeCats])
 
   const adminMenuFiltered = useMemo(() => {
@@ -669,10 +686,13 @@ export default function AdminDashboardPage() {
     const typeCats = new Set<string>(
       activeCats.filter((c) => c.type === menuTypeFilter).map((c) => c.id),
     )
-    return menuItems
-      .filter((i) => typeCats.has(i.category))
-      .filter((i) => menuCatFilter === 'all' || i.category === menuCatFilter)
-      .filter((i) => i.name_fr.toLowerCase().includes(q))
+    return sortAlphaBy(
+      menuItems
+        .filter((i) => typeCats.has(i.category))
+        .filter((i) => menuCatFilter === 'all' || i.category === menuCatFilter)
+        .filter((i) => i.name_fr.toLowerCase().includes(q)),
+      (i) => i.name_fr,
+    )
   }, [menuItems, menuTypeFilter, menuCatFilter, menuSearch, activeCats])
 
   const availableTabs = useMemo(
@@ -746,22 +766,58 @@ export default function AdminDashboardPage() {
 
   const fetchOrders = useCallback(async () => {
     setLoadingOrders(true)
-    const { data } = await supabase
+
+    const { data, error } = await supabase
+      .from('orders')
+      .select('*, order_items(*)')
+      .order('created_at', { ascending: false })
+
+    if (!error && data) {
+      setOrders(
+        (data as OrderRow[]).map((o) => ({
+          ...o,
+          order_items: sortAlphaBy(o.order_items ?? [], (i) => i.nom),
+        })),
+      )
+      setLoadingOrders(false)
+      return
+    }
+
+    console.error('fetchOrders join error:', error)
+    const { data: ordersOnly } = await supabase
       .from('orders')
       .select('*')
       .order('created_at', { ascending: false })
-    setOrders((data as OrderRow[]) ?? [])
-    setLoadingOrders(false)
-  }, [supabase])
 
-  const fetchOrderItems = useCallback(async (orderId: string) => {
-    if (orderItemsCache[orderId]) return // déjà chargé
-    const { data } = await supabase
+    const rows = (ordersOnly as OrderRow[]) ?? []
+    if (rows.length === 0) {
+      setOrders([])
+      setLoadingOrders(false)
+      return
+    }
+
+    const { data: allItems } = await supabase
       .from('order_items')
       .select('*')
-      .eq('order_id', orderId)
-    setOrderItemsCache((prev) => ({ ...prev, [orderId]: (data as OrderItem[]) ?? [] }))
-  }, [supabase, orderItemsCache])
+      .in(
+        'order_id',
+        rows.map((o) => o.id),
+      )
+
+    const itemsByOrder: Record<string, OrderItem[]> = {}
+    for (const item of (allItems as OrderItem[]) ?? []) {
+      if (!itemsByOrder[item.order_id]) itemsByOrder[item.order_id] = []
+      itemsByOrder[item.order_id].push(item)
+    }
+
+    setOrders(
+      rows.map((o) => ({
+        ...o,
+        order_items: sortAlphaBy(itemsByOrder[o.id] ?? [], (i) => i.nom),
+      })),
+    )
+    setLoadingOrders(false)
+  }, [supabase])
 
   useEffect(() => {
     if (!isAuthed || !role) return
@@ -784,6 +840,11 @@ export default function AdminDashboardPage() {
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'orders' },
+        () => void fetchOrders(),
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'order_items' },
         () => void fetchOrders(),
       )
       .subscribe()
@@ -813,7 +874,6 @@ export default function AdminDashboardPage() {
     const { data } = await supabase
       .from('menu_items')
       .select('*')
-      .order('category')
       .order('name_fr')
     setMenuItems((data as MenuItem[]) ?? [])
     setLoadingMenu(false)
@@ -2278,8 +2338,7 @@ export default function AdminDashboardPage() {
                             : timeAgo < 1440
                               ? `Il y a ${Math.floor(timeAgo / 60)}h`
                               : `Il y a ${Math.floor(timeAgo / 1440)}j`
-                        const isExpanded = expandedOrderId === o.id
-                        const cachedItems = orderItemsCache[o.id]
+                        const orderLineItems = o.order_items ?? []
 
                         return (
                           <article
@@ -2343,9 +2402,28 @@ export default function AdminDashboardPage() {
                                 📍 {o.quartier}
                               </span>
                               <span className="rounded-full border border-white/10 bg-white/[0.06] px-3 py-1 text-xs text-white/60">
-                                💳 {o.mode_paiement}
+                                💳 {PAYMENT_LABELS[o.mode_paiement] ?? o.mode_paiement}
                               </span>
+                              {o.horaire ? (
+                                <span className="rounded-full border border-white/10 bg-white/[0.06] px-3 py-1 text-xs text-white/60">
+                                  ⏰{' '}
+                                  {o.horaire === 'asap'
+                                    ? 'Dès que possible'
+                                    : o.heure_choisie ?? o.horaire}
+                                </span>
+                              ) : null}
                             </div>
+
+                            {(o.adresse || o.repere || o.etage || o.instructions) ? (
+                              <div className="mb-4 space-y-1 rounded-xl border border-white/5 bg-white/[0.02] p-3 text-xs text-white/50">
+                                {o.adresse ? <p>🏠 {o.adresse}</p> : null}
+                                {o.repere ? <p>🗺️ {o.repere}</p> : null}
+                                {o.etage ? <p>🏢 {o.etage}</p> : null}
+                                {o.instructions ? (
+                                  <p className="text-white/40">💬 {o.instructions}</p>
+                                ) : null}
+                              </div>
+                            ) : null}
 
                             {/* Status pipeline */}
                             <div className="mb-4 flex flex-wrap items-center gap-1">
@@ -2384,73 +2462,48 @@ export default function AdminDashboardPage() {
                               })}
                             </div>
 
-                            {/* Articles commandés (expandable) */}
-                            <div className="mb-3">
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  if (isExpanded) {
-                                    setExpandedOrderId(null)
-                                  } else {
-                                    setExpandedOrderId(o.id)
-                                    void fetchOrderItems(o.id)
-                                  }
-                                }}
-                                className="flex w-full items-center justify-between rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-2 text-xs text-white/50 transition hover:bg-white/[0.06] hover:text-white/70"
-                              >
-                                <span>🛒 Articles commandés</span>
-                                <span
-                                  className={cn(
-                                    'text-[10px] transition-transform',
-                                    isExpanded ? 'rotate-180' : '',
-                                  )}
-                                >
-                                  ▾
-                                </span>
-                              </button>
-
-                              {isExpanded && (
-                                <div className="mt-2 rounded-xl border border-white/5 bg-white/[0.02] p-3">
-                                  {cachedItems === undefined ? (
-                                    <p className="text-center text-xs text-white/30">
-                                      Chargement…
-                                    </p>
-                                  ) : cachedItems.length === 0 ? (
-                                    <p className="text-center text-xs text-white/30">
-                                      Aucun article trouvé.
-                                    </p>
-                                  ) : (
-                                    <div className="space-y-2">
-                                      {cachedItems.map((item) => (
-                                        <div
-                                          key={item.id}
-                                          className="flex items-center justify-between gap-2"
-                                        >
-                                          <div className="flex items-center gap-2">
-                                            <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-tc-gold/20 text-[10px] font-bold text-tc-gold">
-                                              {item.quantite}
-                                            </span>
-                                            <span className="text-xs text-tc-cream">
-                                              {item.nom}
-                                            </span>
-                                          </div>
-                                          <span className="shrink-0 text-xs text-white/40">
-                                            {formatAmount(item.sous_total)}
-                                          </span>
-                                        </div>
-                                      ))}
-                                      <div className="mt-2 flex justify-between border-t border-white/5 pt-2">
-                                        <span className="text-xs text-white/30">
-                                          Sous-total articles
+                            {/* Articles commandés */}
+                            <div className="mb-3 rounded-xl border border-white/[0.08] bg-white/[0.03] p-3">
+                              <p className="mb-2 text-[10px] uppercase tracking-widest text-white/40">
+                                🛒 Articles commandés
+                                {orderLineItems.length > 0
+                                  ? ` (${orderLineItems.length})`
+                                  : ''}
+                              </p>
+                              {orderLineItems.length === 0 ? (
+                                <p className="text-center text-xs text-white/30">
+                                  Aucun article enregistré pour cette commande.
+                                </p>
+                              ) : (
+                                <div className="space-y-2">
+                                  {orderLineItems.map((item) => (
+                                    <div
+                                      key={item.id}
+                                      className="flex items-center justify-between gap-2"
+                                    >
+                                      <div className="flex min-w-0 items-center gap-2">
+                                        <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-tc-gold/20 text-[10px] font-bold text-tc-gold">
+                                          {item.quantite}
                                         </span>
-                                        <span className="text-xs font-medium text-tc-cream">
-                                          {formatAmount(
-                                            cachedItems.reduce((s, i) => s + i.sous_total, 0),
-                                          )}
+                                        <span className="truncate text-xs text-tc-cream">
+                                          {item.nom}
                                         </span>
                                       </div>
+                                      <span className="shrink-0 text-xs text-white/40">
+                                        {formatAmount(item.sous_total)}
+                                      </span>
                                     </div>
-                                  )}
+                                  ))}
+                                  <div className="mt-2 flex justify-between border-t border-white/5 pt-2">
+                                    <span className="text-xs text-white/30">
+                                      Sous-total articles
+                                    </span>
+                                    <span className="text-xs font-medium text-tc-cream">
+                                      {formatAmount(
+                                        orderLineItems.reduce((s, i) => s + i.sous_total, 0),
+                                      )}
+                                    </span>
+                                  </div>
                                 </div>
                               )}
                             </div>
@@ -2643,7 +2696,10 @@ export default function AdminDashboardPage() {
                 ) : (
                   <>
                     {(['food', 'drink'] as const).map((type) => {
-                      const cats = activeCats.filter((c) => c.type === type).sort((a, b) => a.position - b.position)
+                      const cats = sortAlphaBy(
+                        activeCats.filter((c) => c.type === type),
+                        (c) => c.label_fr,
+                      )
                       return (
                         <div key={type} className="mt-6">
                           <div className="mb-3 flex items-center justify-between">
@@ -3217,8 +3273,25 @@ export default function AdminDashboardPage() {
               </p>
               <p className="text-xs text-white/50">📞 {assignModal.client_telephone}</p>
               <p className="text-xs text-white/50">📍 {assignModal.quartier}</p>
-              <p className="text-xs text-white/50">💳 {assignModal.mode_paiement}</p>
-              <p className="text-sm font-bold text-tc-gold">
+              {assignModal.adresse ? (
+                <p className="text-xs text-white/50">🏠 {assignModal.adresse}</p>
+              ) : null}
+              {assignModal.repere ? (
+                <p className="text-xs text-white/50">🗺️ {assignModal.repere}</p>
+              ) : null}
+              <p className="text-xs text-white/50">
+                💳 {PAYMENT_LABELS[assignModal.mode_paiement] ?? assignModal.mode_paiement}
+              </p>
+              {(assignModal.order_items ?? []).length > 0 ? (
+                <div className="mt-3 space-y-1 border-t border-white/5 pt-3">
+                  {(assignModal.order_items ?? []).map((item) => (
+                    <p key={item.id} className="text-xs text-white/50">
+                      · {item.quantite}× {item.nom} — {formatAmount(item.sous_total)}
+                    </p>
+                  ))}
+                </div>
+              ) : null}
+              <p className="mt-2 text-sm font-bold text-tc-gold">
                 💰 {formatAmount(assignModal.total)}
               </p>
             </div>
@@ -3625,7 +3698,7 @@ export default function AdminDashboardPage() {
                   }
                   className={cn(FORM_INPUT_CLASS, 'mt-1')}
                 >
-                  {activeCats.map((cat) => (
+                  {sortedActiveCats.map((cat) => (
                     <option key={cat.id} value={cat.id} className="bg-[#111]">
                       {cat.label_fr}
                     </option>

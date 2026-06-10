@@ -4,6 +4,7 @@ import Image from 'next/image'
 import { useEffect, useMemo, useState } from 'react'
 import { useGallery } from '@/hooks/useGallery'
 import { mediaUrls } from '@/lib/media'
+import { DARK_BLUR } from '@/lib/blur-placeholder'
 
 const GAME_ROOM_FALLBACK = [
   mediaUrls.gameRoom.gameroom1,
@@ -57,7 +58,9 @@ export default function GalleryStrip() {
                     alt={`Game Room ${(i % imageCount) + 1}`}
                     fill
                     sizes="288px"
-                    className="object-cover opacity-80 transition-opacity hover:opacity-100"
+                    placeholder="blur"
+                    blurDataURL={DARK_BLUR}
+                    className="object-cover opacity-80 transition-opacity duration-500 hover:opacity-100"
                     onError={() => setErrors((e) => ({ ...e, [stableKey]: true }))}
                   />
                 )}

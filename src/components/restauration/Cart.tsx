@@ -7,6 +7,7 @@ import { useCartStore } from '@/stores/cart.store'
 import Tooltip from '@/components/ui/Tooltip'
 import { formatPrice } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
+import { openWhatsApp } from '@/lib/whatsapp'
 import DeliveryForm, { DeliveryData, emptyDelivery } from './DeliveryForm'
 
 type Step = 'cart' | 'delivery' | 'confirm'
@@ -105,16 +106,19 @@ export default function Cart({ locale }: { locale: string }) {
         `${delivery.instructions ? `💬 *Instructions :* ${delivery.instructions}\n` : ''}` +
         `\n🔗 *Assign driver :*\n${dashboardLink}`
 
-    return encodeURIComponent(msg)
+    return msg
   }
 
   const handleConfirm = async () => {
+    if (items.length === 0) return // sécurité : panier vide
     const subtotal = totalAmount()
-
+    const orderItems = [...items]
     const supabase = createClient()
+
     const { data: order, error: orderError } = await supabase
       .from('orders')
       .insert({
+        order_number: orderNumber,
         client_nom: delivery.nom,
         client_telephone: delivery.telephone,
         quartier: delivery.quartier,
@@ -135,8 +139,11 @@ export default function Cart({ locale }: { locale: string }) {
 
     if (orderError) {
       console.error('Supabase order insert error:', orderError)
-    } else if (order) {
-      const orderItems = items.map((item) => ({
+      return
+    }
+
+    if (order) {
+      const rows = orderItems.map((item) => ({
         order_id: order.id,
         nom: item.nameFr,
         categorie: null,
@@ -145,13 +152,13 @@ export default function Cart({ locale }: { locale: string }) {
         sous_total: item.price * item.quantity,
       }))
 
-      const { error: itemsError } = await supabase.from('order_items').insert(orderItems)
+      const { error: itemsError } = await supabase.from('order_items').insert(rows)
       if (itemsError) {
         console.error('Supabase order_items insert error:', itemsError)
       }
     }
 
-    window.open(`https://api.whatsapp.com/send?phone=237655867084&text=${buildMessage()}`, '_blank')
+    openWhatsApp(buildMessage())
     setSent(true)
     clearCart()
   }
@@ -189,7 +196,9 @@ export default function Cart({ locale }: { locale: string }) {
             <div className="flex items-center justify-between border-b border-white/10 px-6 py-5">
               <div className="flex items-center gap-3">
                 <ShoppingBag size={18} className="text-tc-gold" />
-                <h2 className="font-serif text-lg text-tc-cream">{stepTitle[step]}</h2>
+                <h2 className="font-serif text-lg text-tc-cream">
+                  {sent ? (isFr ? 'Commande envoyée' : 'Order sent') : stepTitle[step]}
+                </h2>
                 {step === 'cart' && totalItems() > 0 && (
                   <span className="flex h-5 w-5 items-center justify-center rounded-full bg-tc-gold text-xs font-bold text-tc-black">
                     {totalItems()}
@@ -230,35 +239,35 @@ export default function Cart({ locale }: { locale: string }) {
             {/* Contenu scrollable */}
             <div className="flex-1 overflow-y-auto">
 
-              {/* ÉTAPE 1 — PANIER */}
-              {step === 'cart' && (
+              {sent ? (
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  className="flex h-full flex-col items-center justify-center gap-5 px-6 text-center"
+                >
+                  <CheckCircle size={52} className="text-tc-gold" />
+                  <div>
+                    <p className="font-serif text-2xl text-tc-cream">
+                      {isFr ? 'Commande envoyée !' : 'Order sent!'}
+                    </p>
+                    <p className="mt-2 text-sm text-tc-cream/40">
+                      {isFr
+                        ? 'Notre équipe vous contacte sous 5 minutes pour confirmer et organiser la livraison.'
+                        : 'Our team will contact you within 5 minutes to confirm and organize delivery.'}
+                    </p>
+                    <p className="mt-3 text-xs text-tc-gold/60">N° {orderNumber}</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleClose}
+                    className="border border-white/10 px-6 py-2.5 text-xs uppercase tracking-widest text-tc-cream/40 transition-colors hover:border-tc-gold/30 hover:text-tc-gold"
+                  >
+                    {isFr ? 'Fermer' : 'Close'}
+                  </button>
+                </motion.div>
+              ) : step === 'cart' ? (
                 <>
-                  {sent ? (
-                    <motion.div
-                      initial={{ opacity: 0, scale: 0.95 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      className="flex h-full flex-col items-center justify-center gap-5 px-6 text-center"
-                    >
-                      <CheckCircle size={52} className="text-tc-gold" />
-                      <div>
-                        <p className="font-serif text-2xl text-tc-cream">
-                          {isFr ? 'Commande envoyée !' : 'Order sent!'}
-                        </p>
-                        <p className="mt-2 text-sm text-tc-cream/40">
-                          {isFr
-                            ? 'Notre équipe vous contacte sous 5 minutes pour confirmer et organiser la livraison.'
-                            : 'Our team will contact you within 5 minutes to confirm and organize delivery.'}
-                        </p>
-                        <p className="mt-3 text-xs text-tc-gold/60">N° {orderNumber}</p>
-                      </div>
-                      <button
-                        onClick={handleClose}
-                        className="border border-white/10 px-6 py-2.5 text-xs uppercase tracking-widest text-tc-cream/40 transition-colors hover:border-tc-gold/30 hover:text-tc-gold"
-                      >
-                        {isFr ? 'Fermer' : 'Close'}
-                      </button>
-                    </motion.div>
-                  ) : items.length === 0 ? (
+                  {items.length === 0 ? (
                     <div className="flex h-full flex-col items-center justify-center gap-4 px-6 text-center">
                       <ShoppingBag size={48} className="text-white/10" />
                       <p className="text-sm text-tc-cream/40">
@@ -326,10 +335,7 @@ export default function Cart({ locale }: { locale: string }) {
                     </div>
                   )}
                 </>
-              )}
-
-              {/* ÉTAPE 2 — LIVRAISON */}
-              {step === 'delivery' && (
+              ) : step === 'delivery' ? (
                 <DeliveryForm
                   locale={locale}
                   data={delivery}
@@ -337,10 +343,7 @@ export default function Cart({ locale }: { locale: string }) {
                   onNext={() => setStep('confirm')}
                   onBack={() => setStep('cart')}
                 />
-              )}
-
-              {/* ÉTAPE 3 — CONFIRMATION */}
-              {step === 'confirm' && (
+              ) : (
                 <motion.div
                   initial={{ opacity: 0, x: 40 }}
                   animate={{ opacity: 1, x: 0 }}

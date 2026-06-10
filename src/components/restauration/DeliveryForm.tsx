@@ -5,6 +5,7 @@ import Image from 'next/image'
 import { useEffect, useRef, useState } from 'react'
 import { ChevronDown, MapPin, Clock, CreditCard, User, Phone, AlertCircle } from 'lucide-react'
 import { motion } from 'framer-motion'
+import { deliveryQuartiers as quartiers } from '@/lib/delivery-quartiers'
 import { cn } from '@/lib/utils'
 
 export interface DeliveryData {
@@ -34,46 +35,6 @@ export const emptyDelivery: DeliveryData = {
   heureChoisie: '',
   paiement: 'especes',
 }
-
-// Quartiers triés par distance depuis Dragage (The Canteen's)
-// ≤ 5 km → 1 000F | > 5 km → 2 000F
-const quartiers = [
-  // ── Proche (1 000F) ──────────────────────────────
-  'Bastos',        // ~0.5 km
-  'Nlongkak',      // ~1.3 km
-  'Cité Verte',    // ~1.5 km
-  'Santa Barbara', // ~1.8 km
-  'Elig-Essono',   // ~2.0 km
-  'Tsinga',        // ~2.2 km
-  'Lac Municipal', // ~2.3 km
-  'Centre-ville',  // ~2.5 km
-  'Ngousso',       // ~2.7 km
-  'Melen',         // ~2.9 km
-  'Omnisport',     // ~3.1 km
-  'Briqueterie',   // ~3.2 km
-  'Mvog-Ada',      // ~3.4 km
-  'Mokolo',        // ~3.5 km
-  'Mvan',          // ~3.6 km
-  'Ekoudou',       // ~3.7 km
-  'Djoungolo',     // ~3.9 km
-  'Obili',         // ~4.1 km
-  'Essos',         // ~4.2 km
-  'Etoudi',        // ~4.4 km
-  // ── Lointain (2 000F) ────────────────────────────
-  'Nsam',          // ~5.1 km
-  'Mvog-Betsi',    // ~5.3 km
-  'Mvog-Mbi',      // ~5.4 km
-  'Jouvence',      // ~5.6 km
-  'Mendong',       // ~5.7 km
-  'Biyem-Assi',    // ~6.1 km
-  'Nkolfoulou',    // ~6.5 km
-  'Mimboman',      // ~6.7 km
-  'Nkol-Eton',     // ~6.9 km
-  'Ekounou',       // ~8.2 km
-  'Ahala',         // ~8.7 km
-  'Odza',          // ~10.3 km
-  'Autre quartier',
-]
 
 const TC_LAT = 3.8805
 const TC_LNG = 11.5108
