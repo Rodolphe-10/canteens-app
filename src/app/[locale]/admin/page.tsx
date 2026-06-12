@@ -1281,12 +1281,16 @@ export default function AdminDashboardPage() {
       if (options?.highlight !== false) {
         setHighlightedOrderId(order.id)
       }
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from('livreurs')
         .select('*')
-        .eq('disponible', true)
         .eq('actif', true)
+        .order('nom')
+      if (error) {
+        console.error('fetch available livreurs error:', error)
+      }
       setAvailableLivreurs((data as LivreurRow[]) ?? [])
+      setAssignLivreurId('')
       window.setTimeout(() => {
         document
           .getElementById(`order-${order.id}`)
@@ -1321,8 +1325,31 @@ export default function AdminDashboardPage() {
     if (!assignModal || !assignLivreurId) return
     setAssigningDelivery(true)
 
-    const livreur = availableLivreurs.find((l) => l.id === assignLivreurId)
-    if (!livreur) {
+    const { data: livreurRow, error: livreurLookupError } = await supabase
+      .from('livreurs')
+      .select('id, nom, telephone')
+      .eq('id', assignLivreurId)
+      .eq('actif', true)
+      .maybeSingle()
+
+    if (livreurLookupError || !livreurRow) {
+      alert(
+        'Livreur introuvable en base de données.\n\n' +
+          'Ajoutez-le ou réactivez-le dans l\'onglet « Livreurs », puis réessayez.',
+      )
+      setAssigningDelivery(false)
+      void openAssignForOrder(assignModal)
+      return
+    }
+
+    const { data: orderRow, error: orderLookupError } = await supabase
+      .from('orders')
+      .select('id')
+      .eq('id', assignModal.id)
+      .maybeSingle()
+
+    if (orderLookupError || !orderRow) {
+      alert('Commande introuvable. Rafraîchissez la page et réessayez.')
       setAssigningDelivery(false)
       return
     }
@@ -1331,7 +1358,7 @@ export default function AdminDashboardPage() {
       .from('deliveries')
       .insert({
         order_id: assignModal.id,
-        livreur_id: assignLivreurId,
+        livreur_id: livreurRow.id,
         client_nom: assignModal.client_nom,
         client_telephone: assignModal.client_telephone,
         client_adresse: assignModal.quartier,
@@ -1342,10 +1369,16 @@ export default function AdminDashboardPage() {
       .single()
 
     if (error) {
-      alert(`Erreur : ${error.message}`)
+      const hint =
+        error.message.includes('livreur_id_fkey')
+          ? '\n\nVérifiez que le livreur existe bien dans l\'onglet « Livreurs ».'
+          : ''
+      alert(`Erreur : ${error.message}${hint}`)
       setAssigningDelivery(false)
       return
     }
+
+    const livreur = livreurRow
 
     const delivery = data as DeliveryRow
     const driverUrl = `${window.location.origin}/livreur/${delivery.id}`
@@ -1957,35 +1990,39 @@ export default function AdminDashboardPage() {
 
   return (
     <div className="min-h-screen bg-[#0A0A0A] text-tc-cream">
-      <header className="sticky top-0 z-30 flex h-14 items-center justify-between border-b border-white/[0.07] bg-[#0A0A0A] px-4">
-        <div className="flex flex-col gap-0.5 sm:flex-row sm:items-center sm:gap-3">
-          <p className="text-xs tracking-widest text-white/50">
-            THE CANTEEN&apos;S · DASHBOARD
+      <div className="sticky top-0 z-30 bg-[#0A0A0A]">
+      <header className="flex items-center justify-between gap-3 border-b border-white/[0.07] px-4 py-2.5">
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-[10px] font-medium uppercase tracking-[0.22em] text-white/35 sm:text-xs sm:tracking-widest">
+            The Canteen&apos;s · Dashboard
           </p>
           {role ? (
-            <div className="flex flex-col">
-              <span className={cn('text-xs font-medium', ROLE_STYLES[role ?? 'cm'].color)}>
-                {staffNom || ROLE_STYLES[role ?? 'cm'].label}
+            <p className="mt-0.5 truncate text-sm leading-snug">
+              <span className={cn('font-medium', ROLE_STYLES[role].color)}>
+                {staffNom || 'Staff'}
               </span>
-              <span className="text-[10px] text-white/25">{ROLE_STYLES[role ?? 'cm'].label}</span>
-            </div>
+              <span className="text-white/30"> · {ROLE_STYLES[role].label}</span>
+            </p>
           ) : null}
         </div>
-        <div className="flex items-center gap-4">
-          <span className="font-mono text-xs tabular-nums text-white/40">{clock}</span>
+        <div className="flex shrink-0 items-center gap-2 sm:gap-4">
+          <span className="hidden font-mono text-[10px] tabular-nums text-white/35 sm:inline sm:text-xs">
+            {clock}
+          </span>
           <Tooltip text="Se déconnecter" position="bottom">
             <button
               type="button"
               onClick={handleLogout}
-              className="text-xs text-white/30 transition-colors hover:text-red-400"
+              className="whitespace-nowrap text-[10px] text-white/30 transition-colors hover:text-red-400 sm:text-xs"
             >
-              ⏻ Déconnexion
+              <span className="sm:hidden" aria-label="Déconnexion">⏻</span>
+              <span className="hidden sm:inline">⏻ Déconnexion</span>
             </button>
           </Tooltip>
         </div>
       </header>
 
-      <nav className="sticky top-14 z-20 flex gap-8 overflow-x-auto border-b border-white/[0.07] bg-[#0A0A0A] px-4">
+      <nav className="flex gap-5 overflow-x-auto border-b border-white/[0.07] px-4 sm:gap-8 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {availableTabs.map((id) => (
           <button
             key={id}
@@ -2003,6 +2040,7 @@ export default function AdminDashboardPage() {
           </button>
         ))}
       </nav>
+      </div>
 
       <div
         className={cn(
@@ -3372,7 +3410,9 @@ export default function AdminDashboardPage() {
               <div>
                 <label className="text-xs text-white/40">Choisir le livreur *</label>
                 {availableLivreurs.length === 0 ? (
-                  <p className="mt-2 text-xs text-white/30">Aucun livreur disponible</p>
+                  <p className="mt-2 text-xs text-white/30">
+                    Aucun livreur actif. Ajoutez-en un dans l&apos;onglet « Livreurs ».
+                  </p>
                 ) : (
                   <select
                     value={assignLivreurId}
