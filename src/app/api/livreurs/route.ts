@@ -19,6 +19,7 @@ export async function POST(request: Request) {
       photo_url?: string | null
       moto_immatriculation?: string
       moto_modele?: string | null
+      pin?: string | null
       disponible?: boolean
       actif?: boolean
     }
@@ -30,7 +31,14 @@ export async function POST(request: Request) {
       )
     }
 
-    const payload = {
+    if (!body.id && (!body.pin?.trim() || body.pin.trim().length !== 4)) {
+      return NextResponse.json(
+        { error: 'pin 4 chiffres requis à la création' },
+        { status: 400 },
+      )
+    }
+
+    const payload: Record<string, unknown> = {
       nom: body.nom.trim(),
       telephone: body.telephone.trim(),
       photo_url: body.photo_url ?? null,
@@ -38,6 +46,11 @@ export async function POST(request: Request) {
       moto_modele: body.moto_modele?.trim() ?? null,
       disponible: body.disponible ?? true,
       actif: body.actif ?? true,
+    }
+
+    if (body.pin !== undefined) {
+      const pin = body.pin?.trim() ?? ''
+      payload.pin = pin.length > 0 ? pin : null
     }
 
     if (body.id) {

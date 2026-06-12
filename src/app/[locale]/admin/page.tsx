@@ -205,6 +205,7 @@ type LivreurRow = {
   photo_url?: string
   moto_immatriculation: string
   moto_modele?: string
+  pin?: string | null
   disponible: boolean
   actif: boolean
 }
@@ -1201,17 +1202,19 @@ export default function AdminDashboardPage() {
 
   const openEditLivreur = (l: LivreurRow) => {
     setEditingLivreur(l)
-    setLivreurForm({ ...l })
+    setLivreurForm({ ...l, pin: '' })
     setLivreurPhotoFile(null)
     setLivreurPhotoPreview(null)
     setLivreurModal('edit')
   }
 
   const saveLivreur = async () => {
+    const pinValue = livreurForm.pin?.trim() ?? ''
     if (
       !livreurForm.nom?.trim() ||
       !livreurForm.telephone?.trim() ||
-      !livreurForm.moto_immatriculation?.trim()
+      !livreurForm.moto_immatriculation?.trim() ||
+      (livreurModal === 'create' && pinValue.length !== 4)
     ) {
       return
     }
@@ -1230,7 +1233,7 @@ export default function AdminDashboardPage() {
         }
       }
 
-      const payload = {
+      const payload: Record<string, unknown> = {
         nom: livreurForm.nom.trim(),
         telephone: livreurForm.telephone.trim(),
         photo_url: photoUrl || null,
@@ -1238,6 +1241,10 @@ export default function AdminDashboardPage() {
         moto_modele: livreurForm.moto_modele?.trim() ?? null,
         disponible: livreurForm.disponible ?? true,
         actif: livreurForm.actif ?? true,
+      }
+
+      if (livreurModal === 'create' || pinValue.length > 0) {
+        payload.pin = pinValue.length > 0 ? pinValue : null
       }
 
       const res = await fetch('/api/livreurs', {
@@ -3964,6 +3971,31 @@ export default function AdminDashboardPage() {
                 />
               </div>
               <div>
+                <label className="text-xs text-white/40">
+                  Code PIN (4 chiffres){livreurModal === 'create' ? ' *' : ''}
+                </label>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  maxLength={4}
+                  pattern="[0-9]{4}"
+                  placeholder="1234"
+                  value={livreurForm.pin ?? ''}
+                  onChange={(e) =>
+                    setLivreurForm((prev) => ({
+                      ...prev,
+                      pin: e.target.value.replace(/\D/g, '').slice(0, 4),
+                    }))
+                  }
+                  className={cn(FORM_INPUT_CLASS, 'mt-1 font-mono tracking-widest')}
+                />
+                {livreurModal === 'edit' ? (
+                  <p className="mt-1 text-[10px] text-white/25">
+                    Laisser vide pour conserver le PIN actuel
+                  </p>
+                ) : null}
+              </div>
+              <div>
                 <p className="mb-2 text-xs text-white/40">Photo</p>
                 {livreurPhotoPreview ? (
                   // eslint-disable-next-line @next/next/no-img-element
@@ -4053,7 +4085,9 @@ export default function AdminDashboardPage() {
                   savingLivreur ||
                   !livreurForm.nom?.trim() ||
                   !livreurForm.telephone?.trim() ||
-                  !livreurForm.moto_immatriculation?.trim()
+                  !livreurForm.moto_immatriculation?.trim() ||
+                  (livreurModal === 'create' &&
+                    (livreurForm.pin?.trim().length ?? 0) !== 4)
                 }
                 onClick={() => void saveLivreur()}
                 className="flex-1 rounded-full bg-tc-gold px-4 py-2 text-xs font-bold uppercase tracking-wider text-tc-black transition hover:bg-tc-gold/90 disabled:opacity-50"

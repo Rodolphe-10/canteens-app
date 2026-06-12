@@ -4,6 +4,13 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 
+type LivreurInfo = {
+  nom: string
+  telephone: string
+  moto_immatriculation: string
+  photo_url?: string
+}
+
 type DeliveryRow = {
   id: string
   client_nom?: string
@@ -12,19 +19,43 @@ type DeliveryRow = {
   statut: 'assignee' | 'en_route' | 'livree' | 'annulee'
   lat?: number
   lng?: number
-  livreurs?: {
-    nom: string
-    telephone: string
-    moto_immatriculation: string
-    photo_url?: string
-  }
+  lien_suivi?: string
+  eta_minutes?: number
+  livreurs?: LivreurInfo
 }
 
 function normalizeDelivery(data: Record<string, unknown> | null): DeliveryRow | null {
   if (!data) return null
   const raw = data.livreurs
-  const livreurs = Array.isArray(raw) ? raw[0] : raw
-  return { ...(data as DeliveryRow), livreurs }
+  const livreurRow = Array.isArray(raw) ? raw[0] : raw
+  const livreurs =
+    livreurRow && typeof livreurRow === 'object'
+      ? (livreurRow as LivreurInfo)
+      : undefined
+  return {
+    ...(data as Omit<DeliveryRow, 'livreurs'>),
+    livreurs,
+  }
+}
+
+function notifyClientOnWhatsApp(delivery: DeliveryRow) {
+  if (!delivery.client_telephone || !delivery.lien_suivi) return
+
+  const livreurNom = delivery.livreurs?.nom ?? 'votre livreur'
+  const etaMinutes = delivery.eta_minutes ?? 25
+  const suiviUrl = `${window.location.origin}/suivi/${delivery.lien_suivi}`
+
+  const text =
+    `Bonjour ${delivery.client_nom ?? 'client'} 👋\n\n` +
+    `Je suis ${livreurNom}, votre livreur The Canteen's 🛵\n\n` +
+    `Votre commande est en route ! Suivez ma position en temps réel ici :\n` +
+    `${suiviUrl}\n\n` +
+    `Nous arrivons dans environ ${etaMinutes} minutes.\n` +
+    `Pour toute question : +237 655 867 084`
+
+  const msg = encodeURIComponent(text)
+  const phone = delivery.client_telephone.replace(/\D/g, '')
+  window.open(`https://api.whatsapp.com/send?phone=${phone}&text=${msg}`, '_blank')
 }
 
 export default function LivreurDeliveryPage() {
@@ -77,6 +108,8 @@ export default function LivreurDeliveryPage() {
   }, [watchId])
 
   const startTracking = async () => {
+    if (!delivery) return
+
     await supabase
       .from('deliveries')
       .update({
@@ -98,6 +131,8 @@ export default function LivreurDeliveryPage() {
       (err) => console.error(err),
       { enableHighAccuracy: true, maximumAge: 0, timeout: 10000 },
     )
+
+    notifyClientOnWhatsApp(delivery)
 
     setWatchId(id)
     setTracking(true)
