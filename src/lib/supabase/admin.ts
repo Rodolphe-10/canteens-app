@@ -7,16 +7,35 @@ function getServiceRoleKey(): string | undefined {
   )
 }
 
+function isServiceRoleJwt(key: string): boolean {
+  try {
+    const payload = JSON.parse(
+      Buffer.from(key.split('.')[1] ?? '', 'base64url').toString('utf8'),
+    ) as { role?: string }
+    return payload.role === 'service_role'
+  } catch {
+    return false
+  }
+}
+
 /** Message explicite si la config serveur Supabase est incomplète. */
 export function getAdminClientConfigError(): string | null {
   if (!process.env.NEXT_PUBLIC_SUPABASE_URL) {
     return 'NEXT_PUBLIC_SUPABASE_URL manquante sur le serveur (Vercel → Environment Variables).'
   }
-  if (!getServiceRoleKey()) {
+  const key = getServiceRoleKey()
+  if (!key) {
     return (
       'SUPABASE_SERVICE_KEY manquante sur le serveur. ' +
       'Ajoutez-la dans Vercel → Settings → Environment Variables ' +
       '(nom exact : SUPABASE_SERVICE_KEY), puis redéployez.'
+    )
+  }
+  if (!isServiceRoleJwt(key)) {
+    return (
+      'SUPABASE_SERVICE_KEY invalide : ce n\'est pas la clé service_role. ' +
+      'Dans Supabase → Settings → API, copiez la clé « service_role » (secret), ' +
+      'pas la clé « anon ».'
     )
   }
   return null
