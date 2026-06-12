@@ -1,7 +1,8 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useParams } from 'next/navigation'
+import type { RealtimeChannel } from '@supabase/supabase-js'
 import { createClient } from '@/lib/supabase/client'
 
 type LivreurInfo = {
@@ -65,6 +66,7 @@ export default function LivreurDeliveryPage() {
   const [loading, setLoading] = useState(true)
   const [tracking, setTracking] = useState(false)
   const [watchId, setWatchId] = useState<number | null>(null)
+  const posChannelRef = useRef<RealtimeChannel | null>(null)
   const supabase = useMemo(() => createClient(), [])
 
   const fetchDelivery = useCallback(async () => {
@@ -104,8 +106,12 @@ export default function LivreurDeliveryPage() {
   useEffect(() => {
     return () => {
       if (watchId !== null) navigator.geolocation.clearWatch(watchId)
+      if (posChannelRef.current) {
+        void supabase.removeChannel(posChannelRef.current)
+        posChannelRef.current = null
+      }
     }
-  }, [watchId])
+  }, [watchId, supabase])
 
   const startTracking = async () => {
     if (!delivery) return
@@ -118,18 +124,35 @@ export default function LivreurDeliveryPage() {
       })
       .eq('id', deliveryId)
 
+    const posChannel = supabase.channel(`pos-${deliveryId}`)
+    await posChannel.subscribe()
+    posChannelRef.current = posChannel
+
+    let lastSent = 0
+    const THROTTLE_MS = 6000
+
     const id = navigator.geolocation.watchPosition(
       (pos) => {
+        const now = Date.now()
+        if (now - lastSent < THROTTLE_MS) return
+        lastSent = now
+
+        const lat = pos.coords.latitude
+        const lng = pos.coords.longitude
+
         void supabase
           .from('deliveries')
-          .update({
-            lat: pos.coords.latitude,
-            lng: pos.coords.longitude,
-          })
+          .update({ lat, lng })
           .eq('id', deliveryId)
+
+        void posChannel.send({
+          type: 'broadcast',
+          event: 'position',
+          payload: { lat, lng },
+        })
       },
       (err) => console.error(err),
-      { enableHighAccuracy: true, maximumAge: 0, timeout: 10000 },
+      { enableHighAccuracy: true, maximumAge: 0, timeout: 15000 },
     )
 
     notifyClientOnWhatsApp(delivery)
@@ -142,6 +165,10 @@ export default function LivreurDeliveryPage() {
   const stopTracking = async () => {
     if (watchId !== null) navigator.geolocation.clearWatch(watchId)
     setWatchId(null)
+    if (posChannelRef.current) {
+      await supabase.removeChannel(posChannelRef.current)
+      posChannelRef.current = null
+    }
     await supabase
       .from('deliveries')
       .update({
