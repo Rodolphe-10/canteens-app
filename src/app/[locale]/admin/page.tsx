@@ -946,30 +946,44 @@ export default function AdminDashboardPage() {
 
   const fetchDeliveries = useCallback(async () => {
     setLoadingDeliveries(true)
-    const { data } = await supabase
-      .from('deliveries')
-      .select('*, livreurs(nom, telephone, moto_immatriculation, photo_url)')
-      .order('assigned_at', { ascending: false })
-    setDeliveries((data as DeliveryRow[]) ?? [])
-    setLoadingDeliveries(false)
-  }, [supabase])
+    try {
+      const res = await fetch('/api/deliveries', { cache: 'no-store' })
+      const result = (await res.json()) as {
+        deliveries?: DeliveryRow[]
+        error?: string
+      }
+      if (!res.ok) {
+        console.error('fetchDeliveries error:', result.error)
+        setDeliveries([])
+        return
+      }
+      setDeliveries(result.deliveries ?? [])
+    } catch (err) {
+      console.error('fetchDeliveries error:', err)
+      setDeliveries([])
+    } finally {
+      setLoadingDeliveries(false)
+    }
+  }, [])
 
   useEffect(() => {
-    if (tab === 'livraisons' && isAuthed) {
-      void fetchDeliveries()
-      const channel = supabase
-        .channel('deliveries_live')
-        .on(
-          'postgres_changes',
-          { event: '*', schema: 'public', table: 'deliveries' },
-          () => void fetchDeliveries(),
-        )
-        .subscribe()
-      return () => {
-        void supabase.removeChannel(channel)
-      }
+    if (!isAuthed || (role !== 'admin' && role !== 'chef')) return
+
+    void fetchDeliveries()
+
+    const channel = supabase
+      .channel('deliveries_live')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'deliveries' },
+        () => void fetchDeliveries(),
+      )
+      .subscribe()
+
+    return () => {
+      void supabase.removeChannel(channel)
     }
-  }, [tab, isAuthed, fetchDeliveries, supabase])
+  }, [isAuthed, role, fetchDeliveries, supabase])
 
   const fetchGalleryPhotos = useCallback(
     async (galleryId: string) => {
@@ -1375,10 +1389,16 @@ export default function AdminDashboardPage() {
     id: string,
     statut: DeliveryRow['statut'],
   ) => {
-    const updates: Record<string, unknown> = { statut }
-    if (statut === 'en_route') updates.started_at = new Date().toISOString()
-    if (statut === 'livree') updates.delivered_at = new Date().toISOString()
-    await supabase.from('deliveries').update(updates).eq('id', id)
+    const res = await fetch('/api/deliveries', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id, statut }),
+    })
+    if (!res.ok) {
+      const result = (await res.json()) as { error?: string }
+      alert(`Erreur : ${result.error ?? 'Mise à jour impossible'}`)
+      return
+    }
     await fetchDeliveries()
   }
 
