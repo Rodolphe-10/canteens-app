@@ -1226,23 +1226,18 @@ export default function AdminDashboardPage() {
         actif: livreurForm.actif ?? true,
       }
 
-      if (livreurModal === 'edit' && editingLivreur) {
-        const { error } = await supabase
-          .from('livreurs')
-          .update(payload)
-          .eq('id', editingLivreur.id)
-        if (error) {
-          alert(`Erreur : ${error.message}`)
-          return
-        }
-      } else {
-        // UUID explicite pour éviter l'erreur de FK dans deliveries
-        const newId = crypto.randomUUID()
-        const { error } = await supabase.from('livreurs').insert({ id: newId, ...payload })
-        if (error) {
-          alert(`Erreur : ${error.message}`)
-          return
-        }
+      const res = await fetch('/api/livreurs', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...(livreurModal === 'edit' && editingLivreur ? { id: editingLivreur.id } : {}),
+          ...payload,
+        }),
+      })
+      const result = (await res.json()) as { error?: string; livreur?: LivreurRow }
+      if (!res.ok || !result.livreur) {
+        alert(`Erreur : ${result.error ?? 'Impossible d\'enregistrer le livreur'}`)
+        return
       }
 
       await fetchLivreurs()
@@ -1325,62 +1320,34 @@ export default function AdminDashboardPage() {
     if (!assignModal || !assignLivreurId) return
     setAssigningDelivery(true)
 
-    const { data: livreurRow, error: livreurLookupError } = await supabase
-      .from('livreurs')
-      .select('id, nom, telephone')
-      .eq('id', assignLivreurId)
-      .eq('actif', true)
-      .maybeSingle()
+    const res = await fetch('/api/deliveries/assign', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        orderId: assignModal.id,
+        livreurId: assignLivreurId,
+        etaMinutes: assignEta,
+        clientNom: assignModal.client_nom,
+        clientTelephone: assignModal.client_telephone,
+        clientAdresse: assignModal.quartier,
+      }),
+    })
 
-    if (livreurLookupError || !livreurRow) {
-      alert(
-        'Livreur introuvable en base de données.\n\n' +
-          'Ajoutez-le ou réactivez-le dans l\'onglet « Livreurs », puis réessayez.',
-      )
+    const result = (await res.json()) as {
+      error?: string
+      delivery?: DeliveryRow
+      livreur?: { id: string; nom: string; telephone: string }
+    }
+
+    if (!res.ok || !result.delivery || !result.livreur) {
+      alert(`Erreur : ${result.error ?? 'Assignation impossible'}`)
       setAssigningDelivery(false)
-      void openAssignForOrder(assignModal)
+      if (res.status === 404) void openAssignForOrder(assignModal)
       return
     }
 
-    const { data: orderRow, error: orderLookupError } = await supabase
-      .from('orders')
-      .select('id')
-      .eq('id', assignModal.id)
-      .maybeSingle()
-
-    if (orderLookupError || !orderRow) {
-      alert('Commande introuvable. Rafraîchissez la page et réessayez.')
-      setAssigningDelivery(false)
-      return
-    }
-
-    const { data, error } = await supabase
-      .from('deliveries')
-      .insert({
-        order_id: assignModal.id,
-        livreur_id: livreurRow.id,
-        client_nom: assignModal.client_nom,
-        client_telephone: assignModal.client_telephone,
-        client_adresse: assignModal.quartier,
-        statut: 'assignee',
-        eta_minutes: assignEta,
-      })
-      .select()
-      .single()
-
-    if (error) {
-      const hint =
-        error.message.includes('livreur_id_fkey')
-          ? '\n\nVérifiez que le livreur existe bien dans l\'onglet « Livreurs ».'
-          : ''
-      alert(`Erreur : ${error.message}${hint}`)
-      setAssigningDelivery(false)
-      return
-    }
-
-    const livreur = livreurRow
-
-    const delivery = data as DeliveryRow
+    const livreur = result.livreur
+    const delivery = result.delivery
     const driverUrl = `${window.location.origin}/livreur/${delivery.id}`
 
     const driverMsg = encodeURIComponent(
@@ -1392,10 +1359,6 @@ export default function AdminDashboardPage() {
         `Ouvre ton app de livraison :\n${driverUrl}`,
     )
 
-    await supabase
-      .from('orders')
-      .update({ statut: 'en_livraison' })
-      .eq('id', assignModal.id)
     await fetchOrders()
     await fetchDeliveries()
 
@@ -2006,7 +1969,7 @@ export default function AdminDashboardPage() {
           ) : null}
         </div>
         <div className="flex shrink-0 items-center gap-2 sm:gap-4">
-          <span className="hidden font-mono text-[10px] tabular-nums text-white/35 sm:inline sm:text-xs">
+          <span className="font-mono text-[10px] tabular-nums text-white/40 sm:text-xs">
             {clock}
           </span>
           <Tooltip text="Se déconnecter" position="bottom">
