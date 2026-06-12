@@ -1,12 +1,13 @@
 import { NextResponse } from 'next/server'
-import { createAdminClient } from '@/lib/supabase/admin'
+import { createAdminClient, getAdminClientConfigError } from '@/lib/supabase/admin'
 
 export async function POST(request: Request) {
   try {
+    const configError = getAdminClientConfigError()
     const admin = createAdminClient()
     if (!admin) {
       return NextResponse.json(
-        { error: 'SUPABASE_SERVICE_ROLE_KEY manquante sur le serveur' },
+        { error: configError ?? 'Configuration Supabase serveur incomplète' },
         { status: 500 },
       )
     }
