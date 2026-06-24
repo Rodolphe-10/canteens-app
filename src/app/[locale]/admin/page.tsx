@@ -936,7 +936,12 @@ export default function AdminDashboardPage() {
 
   const fetchLivreurs = useCallback(async () => {
     setLoadingLivreurs(true)
-    const { data } = await supabase.from('livreurs').select('*').order('nom')
+    const { data } = await supabase
+      .from('livreurs')
+      .select(
+        'id, nom, telephone, photo_url, moto_immatriculation, moto_modele, disponible, actif',
+      )
+      .order('nom')
     setLivreurs((data as LivreurRow[]) ?? [])
     setLoadingLivreurs(false)
   }, [supabase])
@@ -1299,7 +1304,9 @@ export default function AdminDashboardPage() {
       }
       const { data, error } = await supabase
         .from('livreurs')
-        .select('*')
+        .select(
+          'id, nom, telephone, photo_url, moto_immatriculation, moto_modele, disponible, actif',
+        )
         .eq('actif', true)
         .order('nom')
       if (error) {

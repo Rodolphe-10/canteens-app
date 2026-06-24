@@ -156,8 +156,11 @@ export default function MenuCard({
                 animate={{ y: 0 }}
                 exit={{ y: '100%' }}
                 transition={{ type: 'spring', stiffness: 400, damping: 40 }}
-                className="fixed inset-x-0 bottom-0 z-[201] mx-auto max-w-lg overflow-y-auto rounded-t-2xl border-t border-white/10 bg-[#111] pb-safe-or-6"
-                style={{ maxHeight: '90dvh' }}
+                className="fixed inset-x-0 bottom-0 z-[201] mx-auto max-w-lg overflow-y-auto rounded-t-2xl border-t border-white/10 bg-[#111]"
+                style={{
+                  maxHeight: '90dvh',
+                  paddingBottom: 'env(safe-area-inset-bottom)',
+                }}
               >
                 {/* Drag handle */}
                 <div ref={dragHandleRef} className="flex justify-center pb-2 pt-3">

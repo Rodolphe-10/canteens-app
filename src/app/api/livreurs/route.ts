@@ -53,12 +53,15 @@ export async function POST(request: Request) {
       payload.pin = pin.length > 0 ? pin : null
     }
 
+    const SAFE_COLUMNS =
+      'id, nom, telephone, photo_url, moto_immatriculation, moto_modele, disponible, actif'
+
     if (body.id) {
       const { data, error } = await admin
         .from('livreurs')
         .update(payload)
         .eq('id', body.id)
-        .select()
+        .select(SAFE_COLUMNS)
         .single()
 
       if (error) {
@@ -71,7 +74,7 @@ export async function POST(request: Request) {
     const { data, error } = await admin
       .from('livreurs')
       .insert({ id: newId, ...payload })
-      .select()
+      .select(SAFE_COLUMNS)
       .single()
 
     if (error) {

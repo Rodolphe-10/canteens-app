@@ -1,27 +1,14 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { createClient } from '@/lib/supabase/client'
 import {
   setLivreurSession,
   type LivreurSession,
 } from '@/lib/livreur-session'
 
-type LivreurRow = {
-  id: string
-  nom: string
-  telephone: string
-  photo_url: string | null
-  moto_immatriculation: string
-  moto_modele: string | null
-  pin: string | null
-  actif: boolean
-}
-
 export default function LivreurLoginPage() {
   const router = useRouter()
-  const supabase = useMemo(() => createClient(), [])
   const [telephone, setTelephone] = useState('')
   const [pin, setPin] = useState('')
   const [error, setError] = useState<string | null>(null)
@@ -39,40 +26,25 @@ export default function LivreurLoginPage() {
 
     setLoading(true)
     try {
-      const { data, error: dbError } = await supabase
-        .from('livreurs')
-        .select('id, nom, telephone, photo_url, moto_immatriculation, moto_modele, pin, actif')
-        .eq('telephone', tel)
-        .eq('actif', true)
-        .maybeSingle()
+      const res = await fetch('/api/livreur/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ telephone: tel, pin }),
+      })
+      const result = (await res.json()) as {
+        error?: string
+        livreur?: LivreurSession
+      }
 
-      if (dbError || !data) {
-        setError('Téléphone ou PIN incorrect')
+      if (!res.ok || !result.livreur) {
+        setError(result.error ?? 'Téléphone ou PIN incorrect')
         return
       }
 
-      const livreur = data as LivreurRow
-
-      if (!livreur.pin) {
-        setError('Demandez votre PIN à l\'administrateur')
-        return
-      }
-
-      if (livreur.pin !== pin) {
-        setError('Téléphone ou PIN incorrect')
-        return
-      }
-
-      const session: LivreurSession = {
-        id: livreur.id,
-        nom: livreur.nom,
-        telephone: livreur.telephone,
-        photo_url: livreur.photo_url ?? undefined,
-        moto_immatriculation: livreur.moto_immatriculation,
-        moto_modele: livreur.moto_modele ?? undefined,
-      }
-      setLivreurSession(session)
+      setLivreurSession(result.livreur)
       router.push('/livreur/home')
+    } catch {
+      setError('Erreur de connexion. Réessayez.')
     } finally {
       setLoading(false)
     }
