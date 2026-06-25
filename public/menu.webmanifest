@@ -1,8 +1,8 @@
 {
-  "name": "The Canteen's",
-  "short_name": "The Canteen's",
-  "description": "The Canteen's — Restaurant · Bar · Lounge · Game Room · Yaoundé",
-  "start_url": "/fr",
+  "name": "The Canteen's Menu",
+  "short_name": "TC Menu",
+  "description": "Menu du restaurant The Canteen's — Yaoundé",
+  "start_url": "/fr/menu",
   "scope": "/",
   "display": "standalone",
   "background_color": "#0A0A0A",
