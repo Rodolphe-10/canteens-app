@@ -471,7 +471,13 @@ export default function EvenementsPage() {
       ) : null}
 
       {/* Section 2 — Agenda */}
-      <section className="px-4 pb-24 pt-8 sm:px-6">
+      <section
+        className={cn(
+          'px-4 pb-24 sm:px-6',
+          // Sans hero « À la une », il faut dégager la navbar fixe (h-20)
+          featuredEvent ? 'pt-8' : 'pt-28 sm:pt-32',
+        )}
+      >
         <div className="mx-auto max-w-6xl">
           {loading ? (
             <p className="py-16 text-center text-sm text-tc-cream/40">
